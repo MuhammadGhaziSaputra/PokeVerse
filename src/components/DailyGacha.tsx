@@ -36,7 +36,8 @@ export default function DailyGacha() {
   const [loading, setLoading] = useState(true);
   const [tokens, setTokens] = useState(0);
   const [canPlayTrivia, setCanPlayTrivia] = useState(false);
-  const [catching, setCatching] = useState(false);
+  const [gachaStage, setGachaStage] = useState<'idle' | 'fetching' | 'ready' | 'opening'>('idle');
+  const [pendingPokemon, setPendingPokemon] = useState<PokemonDetail | null>(null);
   const [caughtPokemonDetail, setCaughtPokemonDetail] = useState<PokemonDetail | null>(null);
   const [collectionList, setCollectionList] = useState<any[]>([]);
 
@@ -109,12 +110,15 @@ export default function DailyGacha() {
   };
 
   const handleCatch = async () => {
-    if (!user || catching || tokens <= 0) return;
-    setCatching(true);
+    if (!user || gachaStage !== 'idle' || tokens <= 0) return;
+    setGachaStage('fetching');
     
     try {
+      const minDelay = new Promise(resolve => setTimeout(resolve, 1500));
       const randomId = getRandomPokemonId();
-      const pokemon = await fetchPokemonDetail(randomId);
+      const pokemonReq = fetchPokemonDetail(randomId);
+      
+      const [, pokemon] = await Promise.all([minDelay, pokemonReq]);
       const rarity = getRarity(pokemon.id);
       
       const basicData = {
@@ -126,12 +130,6 @@ export default function DailyGacha() {
         caughtAt: new Date().toISOString()
       };
 
-      if (pokemon.cries) {
-        const audio = new Audio(pokemon.cries);
-        audio.volume = 0.5;
-        audio.play().catch(e => console.error("Error playing cry", e));
-      }
-
       // Save to Firebase
       const pokemonRef = doc(db, "users", user.uid, "caughtPokemon", pokemon.id.toString());
       await setDoc(pokemonRef, basicData, { merge: true });
@@ -141,7 +139,8 @@ export default function DailyGacha() {
       await setDoc(userRef, { tokens: newTokens }, { merge: true });
       setTokens(newTokens);
 
-      setCaughtPokemonDetail(pokemon);
+      setPendingPokemon(pokemon);
+      setGachaStage('ready');
       
       // Update collection list locally
       setCollectionList(prev => {
@@ -154,9 +153,22 @@ export default function DailyGacha() {
     } catch (e) {
       console.error("Gacha error", e);
       alert("Terjadi kesalahan saat memancing Pokemon.");
-    } finally {
-      setCatching(false);
+      setGachaStage('idle');
     }
+  };
+
+  const handleOpenPokeball = () => {
+    setGachaStage('opening');
+    setTimeout(() => {
+        if (pendingPokemon?.cries) {
+          const audio = new Audio(pendingPokemon.cries);
+          audio.volume = 0.5;
+          audio.play().catch(e => console.error("Error playing cry", e));
+        }
+        setCaughtPokemonDetail(pendingPokemon);
+        setGachaStage('idle');
+        setPendingPokemon(null);
+    }, 1500);
   };
 
   const startTrivia = async () => {
@@ -256,10 +268,10 @@ export default function DailyGacha() {
             {tokens > 0 ? (
               <button
                 onClick={handleCatch}
-                disabled={catching}
+                disabled={gachaStage !== 'idle'}
                 className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-xl font-black uppercase tracking-wider transition-all shadow-xl shadow-red-500/20 disabled:opacity-50 disabled:scale-95 hover:scale-105 active:scale-95 flex items-center gap-2"
               >
-                {catching ? "Memancing..." : (
+                {gachaStage !== 'idle' ? "Memancing..." : (
                   <>
                     <Sparkles className="w-5 h-5" />
                     Tangkap (1 Token)
@@ -366,6 +378,81 @@ export default function DailyGacha() {
       </AnimatePresence>
 
       {/* Caught Pokemon Result */}
+      <AnimatePresence>
+        {gachaStage !== 'idle' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md"
+          >
+              {gachaStage === 'fetching' && (
+                <div className="flex flex-col items-center">
+                  <motion.img 
+                    src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" 
+                    alt="Pokeball"
+                    className="w-32 h-32"
+                    style={{ imageRendering: 'pixelated' }}
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                  />
+                  <p className="text-white font-bold text-xl mt-4 animate-pulse">Sedang memancing...</p>
+                </div>
+              )}
+
+              {gachaStage === 'ready' && (
+                <div className="flex flex-col items-center">
+                  <motion.div
+                    animate={{ 
+                      rotate: [0, -15, 15, -15, 15, 0],
+                      scale: [1, 1.1, 1]
+                    }}
+                    transition={{ 
+                      repeat: Infinity, 
+                      repeatDelay: 1,
+                      duration: 0.8
+                    }}
+                    onClick={handleOpenPokeball}
+                    className="cursor-pointer"
+                  >
+                    <img 
+                      src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" 
+                      alt="Pokeball"
+                      className="w-48 h-48 drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]"
+                      style={{ imageRendering: 'pixelated' }}
+                    />
+                  </motion.div>
+                  <p className="text-white font-bold text-2xl mt-8 animate-bounce">Tertangkap! Tap untuk membuka!</p>
+                </div>
+              )}
+
+              {gachaStage === 'opening' && (
+                <div className="flex flex-col items-center relative">
+                  <motion.div
+                    initial={{ scale: 1, filter: "brightness(1) blur(0px)" }}
+                    animate={{ scale: 2, opacity: 0, filter: "brightness(2) blur(10px)" }}
+                    transition={{ duration: 1.5, ease: "easeIn" }}
+                  >
+                    <img 
+                      src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" 
+                      alt="Pokeball"
+                      className="w-48 h-48"
+                      style={{ imageRendering: 'pixelated' }}
+                    />
+                  </motion.div>
+                  <motion.div 
+                     initial={{ opacity: 0, scale: 0 }}
+                     animate={{ opacity: 1, scale: 5 }}
+                     transition={{ duration: 1.5, ease: "easeOut" }}
+                     className="absolute inset-0 bg-white rounded-full z-10"
+                     style={{ mixBlendMode: "overlay" }}
+                  />
+                </div>
+              )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {caughtPokemonDetail && (
           <motion.div
@@ -490,7 +577,7 @@ export default function DailyGacha() {
                 className={`rounded-2xl border-2 p-4 flex flex-col items-center hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer relative overflow-hidden ${
                   getRarity(pokemon.id) === 'MYTHICAL' ? 'bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-900 via-purple-900 to-black border-fuchsia-500 shadow-[0_0_15px_rgba(217,70,239,0.3)]' :
                   getRarity(pokemon.id) === 'LEGENDARY' ? 'bg-[conic-gradient(at_top_left,_var(--tw-gradient-stops))] from-yellow-300 via-yellow-600 to-amber-800 border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.3)]' :
-                  'bg-white border-slate-100'
+                  'bg-[linear-gradient(to_bottom_right,_var(--tw-gradient-stops))] from-slate-500 via-slate-700 to-slate-900 border-slate-500 shadow-[0_0_15px_rgba(100,116,139,0.3)]'
                 }`}
                 onClick={() => {
                   const cryUrl = `https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/latest/${pokemon.id}.ogg`;
@@ -499,26 +586,24 @@ export default function DailyGacha() {
                   audio.play().catch(e => console.error("Error playing cry", e));
                 }}
               >
-                {getRarity(pokemon.id) !== 'COMMON' && (
-                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none" />
-                )}
+                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none" />
                 <span className={`text-[10px] font-black self-start mb-2 relative z-10 ${
                   getRarity(pokemon.id) === 'MYTHICAL' ? 'text-purple-300' :
                   getRarity(pokemon.id) === 'LEGENDARY' ? 'text-yellow-200' :
-                  'text-slate-400'
+                  'text-slate-300'
                 }`}>#{String(pokemon.id).padStart(3, '0')}</span>
                 <img src={pokemon.image || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemon.id}.png`} alt={pokemon.name} className="w-20 h-20 object-contain mb-3 drop-shadow-md relative z-10" />
                 <h4 className={`font-bold capitalize text-sm mb-2 text-center relative z-10 ${
                   getRarity(pokemon.id) === 'MYTHICAL' ? 'text-fuchsia-100' :
                   getRarity(pokemon.id) === 'LEGENDARY' ? 'text-amber-100' :
-                  'text-slate-800'
+                  'text-slate-100'
                 }`}>{pokemon.name}</h4>
                 <div className="flex flex-wrap justify-center gap-1 w-full relative z-10">
                   {pokemon.types.map((type: string) => (
                     <span key={type} className={`flex items-center gap-1 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
                       getRarity(pokemon.id) === 'MYTHICAL' ? 'bg-purple-900/50 text-fuchsia-200 border border-fuchsia-500/30' :
                       getRarity(pokemon.id) === 'LEGENDARY' ? 'bg-amber-900/50 text-yellow-200 border border-yellow-500/30' :
-                      'bg-slate-100 text-slate-600'
+                      'bg-slate-800/50 text-slate-200 border border-slate-400/30'
                     }`}>
                       <img src={`https://raw.githubusercontent.com/duiker101/pokemon-type-svg-icons/master/icons/${type}.svg`} alt={type} className="w-2.5 h-2.5 opacity-50" />
                       {type}
