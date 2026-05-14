@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { fetchPokemonList, fetchAllPokemonNames, fetchPokemonByList, fetchPokemonByType } from "../services/pokeApi";
 import { PokemonBasic } from "../types";
 import PokemonCard from "./PokemonCard";
 import { Loader2 } from "lucide-react";
+import { motion } from "motion/react";
 
 interface Props {
   onSelect: (id: number) => void;
@@ -37,6 +38,17 @@ export default function PokemonGrid({ onSelect, searchQuery, typeFilter, genFilt
   
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
+  const loadingRef = useRef(loading);
+  const searchingRef = useRef(searching);
+
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
+
+  useEffect(() => {
+    searchingRef.current = searching;
+  }, [searching]);
+
   const limit = 20;
 
   // Initial load: Paginated list + All names for searching
@@ -73,6 +85,7 @@ export default function PokemonGrid({ onSelect, searchQuery, typeFilter, genFilt
   useEffect(() => {
     let mounted = true;
     const handleSearch = async () => {
+      setHasMoreSearch(true);
       // If no query and no filter, we just show the standard paginated list
       if (!searchQuery && !typeFilter && !genFilter) {
         if (mounted) {
@@ -152,13 +165,17 @@ export default function PokemonGrid({ onSelect, searchQuery, typeFilter, genFilt
         const nextBatchNames = filteredNames.slice(searchOffset, searchOffset + limit);
         if (nextBatchNames.length > 0) {
           const details = await fetchPokemonByList(nextBatchNames);
+          if (details.length === 0) setHasMoreSearch(false);
           setSearchResults(prev => [...prev, ...details]);
           setSearchOffset(prev => prev + limit);
+        } else {
+          setHasMoreSearch(false);
         }
       } else {
         // Load more normal list
         const nextOffset = pokemon.length;
         const newList = await fetchPokemonList(limit, nextOffset);
+        if (newList.length === 0) setHasMoreNormal(false);
         setPokemon(prev => [...prev, ...newList]);
       }
     } catch (e) {
@@ -170,14 +187,67 @@ export default function PokemonGrid({ onSelect, searchQuery, typeFilter, genFilt
 
   const isInSearchMode = searchQuery || typeFilter || genFilter;
   const currentDisplay = isInSearchMode ? searchResults : pokemon;
+  
+  const [hasMoreSearch, setHasMoreSearch] = useState(true);
+  const [hasMoreNormal, setHasMoreNormal] = useState(true);
+
+  const hasMore = isInSearchMode ? (searchOffset < filteredNames.length && hasMoreSearch) : (pokemon.length < 1025 && hasMoreNormal);
+
+  const observer = useRef<IntersectionObserver | null>(null);
+  
+  const loadMoreRef = useRef(loadMore);
+  useEffect(() => {
+    loadMoreRef.current = loadMore;
+  }, [loadMore]);
+
+  const lastElementRef = useCallback((node: HTMLDivElement | null) => {
+    if (observer.current) observer.current.disconnect();
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) {
+        if (hasMore && !loadingRef.current && !searchingRef.current) {
+           loadMoreRef.current();
+        }
+      }
+    });
+    if (node) observer.current.observe(node);
+  }, [hasMore]);
+
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.05 }
+    }
+  };
+
+  const item = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 }
+  };
+
+  const isCardLarge = (index: number) => {
+    // Determine which cards get the 2x size for bento grid. 
+    return index % 14 === 0 || index % 14 === 7;
+  };
 
   return (
     <div className="w-full">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-        {currentDisplay.map((p: PokemonBasic) => (
-          <PokemonCard key={p.id} pokemon={p} onClick={onSelect} />
+      <motion.div 
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 grid-flow-dense"
+      >
+        {currentDisplay.map((p: PokemonBasic, index: number) => (
+          <motion.div key={p.id} variants={item} className={isCardLarge(index) ? "md:col-span-2 md:row-span-2" : ""}>
+            <PokemonCard 
+              pokemon={p} 
+              onClick={onSelect} 
+              isLarge={isCardLarge(index)} 
+            />
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
       
       {(loading || searching) && (
         <div className="flex justify-center py-10">
@@ -185,15 +255,9 @@ export default function PokemonGrid({ onSelect, searchQuery, typeFilter, genFilt
         </div>
       )}
       
-      {!loading && !searching && (!isInSearchMode || searchOffset < filteredNames.length) && (
-        <div className="flex justify-center py-10">
-          <button
-            onClick={loadMore}
-            className="bg-red-500 text-white px-8 py-3 rounded-full font-bold shadow-lg hover:bg-red-600 transition-colors"
-            id="load-more-btn"
-          >
-            Muat Lebih Banyak
-          </button>
+      {!loading && !searching && hasMore && (
+        <div ref={lastElementRef} className="flex justify-center py-10">
+          <div className="w-8 h-8 rounded-full border-4 border-white/10 border-t-white animate-spin"></div>
         </div>
       )}
 

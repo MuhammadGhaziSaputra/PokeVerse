@@ -6,6 +6,31 @@ import { fetchPokemonDetail } from "../services/pokeApi";
 import { PokemonDetail } from "../types";
 import { LogIn, Gift, Sparkles, Coins, Gamepad2, CheckCircle2, XCircle } from "lucide-react";
 
+const MYTHICALS = [151, 251, 385, 386, 489, 490, 491, 492, 493, 494, 647, 648, 649, 719, 720, 721, 801, 802, 807, 808, 809, 893];
+const LEGENDARIES = [144, 145, 146, 150, 243, 244, 245, 249, 250, 377, 378, 379, 380, 381, 382, 383, 384, 480, 481, 482, 483, 484, 485, 486, 487, 488, 638, 639, 640, 641, 642, 643, 644, 645, 646, 716, 717, 718, 772, 773, 785, 786, 787, 788, 789, 790, 791, 792, 800, 888, 889, 890, 891, 892, 894, 895, 896, 897, 898];
+
+const getRarity = (id: number) => {
+  if (MYTHICALS.includes(id)) return "MYTHICAL";
+  if (LEGENDARIES.includes(id)) return "LEGENDARY";
+  return "COMMON";
+};
+
+const getRandomPokemonId = () => {
+  const roll = Math.random();
+  if (roll < 0.05) { // 5% chance
+    return MYTHICALS[Math.floor(Math.random() * MYTHICALS.length)];
+  } else if (roll < 0.15) { // 10% chance
+    return LEGENDARIES[Math.floor(Math.random() * LEGENDARIES.length)];
+  } else {
+    // Prevent getting mythical/legendary in the common pool just to keep it strict
+    let id = Math.floor(Math.random() * 1025) + 1;
+    while (MYTHICALS.includes(id) || LEGENDARIES.includes(id)) {
+      id = Math.floor(Math.random() * 1025) + 1;
+    }
+    return id;
+  }
+};
+
 export default function DailyGacha() {
   const [user, setUser] = useState(auth.currentUser);
   const [loading, setLoading] = useState(true);
@@ -88,15 +113,16 @@ export default function DailyGacha() {
     setCatching(true);
     
     try {
-      // Random Pokemon ID between 1 and 1025
-      const randomId = Math.floor(Math.random() * 1025) + 1;
+      const randomId = getRandomPokemonId();
       const pokemon = await fetchPokemonDetail(randomId);
+      const rarity = getRarity(pokemon.id);
       
       const basicData = {
         id: pokemon.id,
         name: pokemon.name,
         image: pokemon.image,
         types: pokemon.types,
+        rarity,
         caughtAt: new Date().toISOString()
       };
 
@@ -343,44 +369,107 @@ export default function DailyGacha() {
       <AnimatePresence>
         {caughtPokemonDetail && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 30 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="bg-amber-50 rounded-3xl border-2 border-amber-200 p-8 text-center relative overflow-hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
           >
-            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10" />
-            <h3 className="text-2xl font-black text-amber-900 mb-6 uppercase tracking-tight relative z-10">Pokemon Ditangkap!</h3>
-            
-            <motion.div 
-               initial={{ rotate: -180, scale: 0 }}
-               animate={{ rotate: 0, scale: 1 }}
-               transition={{ type: "spring", bounce: 0.5, delay: 0.2 }}
-               className="w-48 h-48 mx-auto mb-6 relative z-10 drop-shadow-2xl"
+            <motion.div
+              initial={{ scale: 0.9, y: 30 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 30 }}
+              className={`rounded-3xl border-4 p-8 text-center relative overflow-hidden max-w-sm w-full mx-auto shadow-2xl ${
+                getRarity(caughtPokemonDetail.id) === 'MYTHICAL' ? 'bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-900 via-purple-900 to-black border-fuchsia-500 shadow-[0_0_40px_rgba(217,70,239,0.5)]' :
+                getRarity(caughtPokemonDetail.id) === 'LEGENDARY' ? 'bg-[conic-gradient(at_top_left,_var(--tw-gradient-stops))] from-yellow-300 via-yellow-600 to-amber-800 border-yellow-400 shadow-[0_0_40px_rgba(250,204,21,0.5)]' :
+                'bg-blue-900 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.4)]'
+              }`}
             >
-              <img 
-                src={caughtPokemonDetail.image || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${caughtPokemonDetail.id}.png`} 
-                alt={caughtPokemonDetail.name}
-                className="w-full h-full object-contain" 
-              />
+              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10" />
+              <div className="absolute inset-0 bg-white/5 backdrop-blur-[2px]" />
+              
+              {(getRarity(caughtPokemonDetail.id) === 'MYTHICAL' || getRarity(caughtPokemonDetail.id) === 'LEGENDARY') && (
+                 <>
+                   <motion.div 
+                      animate={{ rotate: 360 }}
+                      transition={{ repeat: Infinity, duration: 10, ease: "linear" }}
+                      className="absolute -top-[50%] -left-[50%] w-[200%] h-[200%] bg-[conic-gradient(from_0deg,transparent_0_340deg,rgba(255,255,255,0.2)_360deg)] z-0"
+                   />
+                   <motion.div 
+                      initial={{ opacity: 0, scale: 0 }}
+                      animate={{ opacity: [0, 1, 0], scale: [0.8, 1.2, 1.5] }}
+                      transition={{ repeat: Infinity, duration: 2, ease: "easeOut" }}
+                      className="absolute inset-0 border-4 border-white/30 rounded-3xl z-0"
+                   />
+                   <motion.div
+                      animate={{ backgroundPosition: ["200% 0", "-200% 0"] }}
+                      transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
+                      className="absolute inset-0 bg-[linear-gradient(90deg,transparent_25%,rgba(255,255,255,0.4)_50%,transparent_75%)] bg-[length:200%_100%] z-10 pointer-events-none"
+                      style={{ mixBlendMode: 'overlay' }}
+                   />
+                 </>
+              )}
+
+              <h3 className={`text-2xl font-black mb-2 uppercase tracking-tight relative z-10 ${
+                getRarity(caughtPokemonDetail.id) === 'MYTHICAL' ? 'text-purple-300' :
+                getRarity(caughtPokemonDetail.id) === 'LEGENDARY' ? 'text-amber-300' :
+                'text-blue-300'
+              }`}>
+                Pokemon Ditangkap!
+              </h3>
+              <p className={`text-sm font-bold uppercase tracking-widest relative z-10 mb-6 ${
+                getRarity(caughtPokemonDetail.id) === 'MYTHICAL' ? 'text-purple-400' :
+                getRarity(caughtPokemonDetail.id) === 'LEGENDARY' ? 'text-amber-400' :
+                'text-blue-400'
+              }`}>
+                {getRarity(caughtPokemonDetail.id)} TIER
+              </p>
+              
+              <motion.div 
+                 initial={{ rotate: -180, scale: 0 }}
+                 animate={{ rotate: 0, scale: 1 }}
+                 transition={{ type: "spring", bounce: 0.5, delay: 0.2 }}
+                 className={`w-48 h-48 mx-auto mb-6 relative z-10 drop-shadow-2xl flex items-center justify-center rounded-full bg-white/10 border-4 border-white/20`}
+              >
+                <motion.img 
+                  src={caughtPokemonDetail.image || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${caughtPokemonDetail.id}.png`} 
+                  alt={caughtPokemonDetail.name}
+                  className="w-3/4 h-3/4 object-contain relative z-20" 
+                  animate={
+                    (getRarity(caughtPokemonDetail.id) === 'MYTHICAL' || getRarity(caughtPokemonDetail.id) === 'LEGENDARY') 
+                    ? { y: [0, -10, 0], filter: ["drop-shadow(0 0 10px rgba(255,255,255,0.5))", "drop-shadow(0 0 25px rgba(255,255,255,0.9))", "drop-shadow(0 0 10px rgba(255,255,255,0.5))"] }
+                    : {}
+                  }
+                  transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                />
+              </motion.div>
+
+              <h4 className={`text-4xl font-black capitalize mb-2 relative z-10 !font-heading ${
+                getRarity(caughtPokemonDetail.id) === 'MYTHICAL' ? 'text-purple-100' :
+                getRarity(caughtPokemonDetail.id) === 'LEGENDARY' ? 'text-amber-100' :
+                'text-white'
+              }`}>
+                {caughtPokemonDetail.name}
+              </h4>
+              <div className="flex justify-center gap-2 relative z-10">
+                {caughtPokemonDetail.types.map((type: string) => (
+                  <span key={type} className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold uppercase backdrop-blur-md border ${
+                    getRarity(caughtPokemonDetail.id) === 'MYTHICAL' ? 'bg-purple-900/50 text-purple-200 border-purple-500/50' :
+                    getRarity(caughtPokemonDetail.id) === 'LEGENDARY' ? 'bg-amber-900/50 text-amber-200 border-amber-500/50' :
+                    'bg-blue-900/50 text-blue-200 border-blue-500/50'
+                  }`}>
+                    <img src={`https://raw.githubusercontent.com/duiker101/pokemon-type-svg-icons/master/icons/${type}.svg`} alt={type} className="w-3.5 h-3.5 opacity-80 invert contrast-200 brightness-200" />
+                    {type}
+                  </span>
+                ))}
+              </div>
+
+              <button 
+                onClick={() => setCaughtPokemonDetail(null)}
+                className="mt-8 px-6 py-2 bg-black/30 hover:bg-black/50 border border-white/20 text-white rounded-lg font-bold transition-colors relative z-10 w-full"
+              >
+                Simpan ke Koleksi
+              </button>
             </motion.div>
-
-            <h4 className="text-3xl font-black capitalize text-amber-800 mb-2 relative z-10">
-              {caughtPokemonDetail.name}
-            </h4>
-            <div className="flex justify-center gap-2 relative z-10">
-              {caughtPokemonDetail.types.map((type: string) => (
-                <span key={type} className="flex items-center gap-1.5 px-3 py-1 bg-amber-200 text-amber-900 rounded-lg text-xs font-bold uppercase">
-                  <img src={`https://raw.githubusercontent.com/duiker101/pokemon-type-svg-icons/master/icons/${type}.svg`} alt={type} className="w-3.5 h-3.5 opacity-60 mix-blend-multiply" />
-                  {type}
-                </span>
-              ))}
-            </div>
-
-            <button 
-              onClick={() => setCaughtPokemonDetail(null)}
-              className="mt-8 px-6 py-2 bg-amber-800 text-white rounded-lg font-bold hover:bg-amber-900 transition-colors relative z-10"
-            >
-              Tutup
-            </button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -398,7 +487,11 @@ export default function DailyGacha() {
             {collectionList.map((pokemon) => (
               <div 
                 key={pokemon.id} 
-                className="bg-white rounded-2xl border border-slate-100 p-4 flex flex-col items-center hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer"
+                className={`rounded-2xl border-2 p-4 flex flex-col items-center hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer relative overflow-hidden ${
+                  getRarity(pokemon.id) === 'MYTHICAL' ? 'bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-900 via-purple-900 to-black border-fuchsia-500 shadow-[0_0_15px_rgba(217,70,239,0.3)]' :
+                  getRarity(pokemon.id) === 'LEGENDARY' ? 'bg-[conic-gradient(at_top_left,_var(--tw-gradient-stops))] from-yellow-300 via-yellow-600 to-amber-800 border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.3)]' :
+                  'bg-white border-slate-100'
+                }`}
                 onClick={() => {
                   const cryUrl = `https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/latest/${pokemon.id}.ogg`;
                   const audio = new Audio(cryUrl);
@@ -406,12 +499,27 @@ export default function DailyGacha() {
                   audio.play().catch(e => console.error("Error playing cry", e));
                 }}
               >
-                <span className="text-[10px] font-black text-slate-400 self-start mb-2">#{String(pokemon.id).padStart(3, '0')}</span>
-                <img src={pokemon.image || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemon.id}.png`} alt={pokemon.name} className="w-20 h-20 object-contain mb-3 drop-shadow-md" />
-                <h4 className="font-bold text-slate-800 capitalize text-sm mb-2 text-center">{pokemon.name}</h4>
-                <div className="flex flex-wrap justify-center gap-1 w-full">
+                {getRarity(pokemon.id) !== 'COMMON' && (
+                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none" />
+                )}
+                <span className={`text-[10px] font-black self-start mb-2 relative z-10 ${
+                  getRarity(pokemon.id) === 'MYTHICAL' ? 'text-purple-300' :
+                  getRarity(pokemon.id) === 'LEGENDARY' ? 'text-yellow-200' :
+                  'text-slate-400'
+                }`}>#{String(pokemon.id).padStart(3, '0')}</span>
+                <img src={pokemon.image || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemon.id}.png`} alt={pokemon.name} className="w-20 h-20 object-contain mb-3 drop-shadow-md relative z-10" />
+                <h4 className={`font-bold capitalize text-sm mb-2 text-center relative z-10 ${
+                  getRarity(pokemon.id) === 'MYTHICAL' ? 'text-fuchsia-100' :
+                  getRarity(pokemon.id) === 'LEGENDARY' ? 'text-amber-100' :
+                  'text-slate-800'
+                }`}>{pokemon.name}</h4>
+                <div className="flex flex-wrap justify-center gap-1 w-full relative z-10">
                   {pokemon.types.map((type: string) => (
-                    <span key={type} className="flex items-center gap-1 text-[9px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-bold uppercase tracking-wider">
+                    <span key={type} className={`flex items-center gap-1 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                      getRarity(pokemon.id) === 'MYTHICAL' ? 'bg-purple-900/50 text-fuchsia-200 border border-fuchsia-500/30' :
+                      getRarity(pokemon.id) === 'LEGENDARY' ? 'bg-amber-900/50 text-yellow-200 border border-yellow-500/30' :
+                      'bg-slate-100 text-slate-600'
+                    }`}>
                       <img src={`https://raw.githubusercontent.com/duiker101/pokemon-type-svg-icons/master/icons/${type}.svg`} alt={type} className="w-2.5 h-2.5 opacity-50" />
                       {type}
                     </span>

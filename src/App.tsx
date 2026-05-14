@@ -41,6 +41,7 @@ export default function App() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [profileTick, setProfileTick] = useState(0);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((u) => setUser(u));
@@ -48,11 +49,17 @@ export default function App() {
   }, []);
 
   const handleLogin = async () => {
+    setLoginError(null);
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      if (e.code === 'auth/unauthorized-domain') {
+        setLoginError("Domain ini belum diotorisasi di Firebase. Tambahkan domain ini ke Firebase Console > Authentication > Settings > Authorized domains.");
+      } else {
+        setLoginError(e.message || "Gagal login. Coba lagi.");
+      }
     }
   };
 
@@ -82,72 +89,81 @@ export default function App() {
   ];
 
   return (
-    <div className="min-h-screen flex bg-slate-50 text-slate-900 font-sans selection:bg-red-100 selection:text-red-900">
-      {/* Sidebar */}
-      <aside className="fixed bottom-0 left-0 right-0 md:top-0 md:bottom-0 md:w-64 bg-white border-t md:border-t-0 md:border-r border-slate-100 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] md:shadow-sm z-40 flex md:flex-col p-2 md:p-4 overflow-x-auto md:overflow-y-auto">
-        <div className="hidden md:flex items-center justify-center md:justify-start gap-3 mb-10 mt-2 px-2">
-           <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center rotate-3 shadow-lg shadow-red-200 shrink-0">
-              <div className="w-4 h-4 bg-white rounded-full border-2 border-slate-900 relative">
-                <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-slate-900 -translate-y-1/2" />
+    <div className="min-h-screen flex bg-[#0B1021] text-white font-sans selection:bg-red-500/30 selection:text-white relative overflow-hidden">
+      {/* Background Particles/Glows */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-600/10 blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-purple-600/10 blur-[120px]" />
+      </div>
+
+      {/* Sidebar / Bottom Navigation */}
+      <nav className="fixed bottom-4 md:bottom-auto md:top-1/2 md:-translate-y-1/2 left-1/2 -translate-x-1/2 md:left-4 md:-translate-x-0 w-[calc(100%-2rem)] md:w-auto bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl z-40 flex md:flex-col p-2 rounded-2xl md:min-h-[400px]">
+        <div className="hidden md:flex flex-col items-center gap-1 mb-8 mt-2">
+           <div className="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center rotate-12 shadow-lg shadow-red-500/20 shrink-0 mb-2">
+              <div className="w-4 h-4 bg-white rounded-full border-[3px] border-[#0B1021] relative">
+                <div className="absolute top-1/2 left-0 right-0 h-[2px] bg-[#0B1021] -translate-y-1/2" />
               </div>
            </div>
-           <h1 className="text-xl font-black tracking-tighter uppercase italic text-slate-900">Poke<span className="text-red-600">Verse</span></h1>
         </div>
 
-        <nav className="flex md:flex-col gap-1 md:gap-2 flex-1 justify-around md:justify-start">
+        <div className="flex md:flex-col gap-2 flex-1 justify-around md:justify-center w-full">
           {navItems.map((item) => (
             <button
               key={item.id}
               onClick={() => setView(item.id as View)}
-              className={`flex flex-col md:flex-row items-center gap-1 md:gap-3 px-2 md:px-4 py-2 md:py-3 rounded-xl text-[10px] md:text-sm font-bold transition-all md:w-full justify-center md:justify-start ${
+              className={`group flex md:flex-col items-center gap-1 md:gap-1.5 p-2 rounded-xl text-[9px] font-bold transition-all ${
                 view === item.id 
-                  ? "bg-red-50 text-red-600" 
-                  : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                  ? "bg-white/10 text-white shadow-inner" 
+                  : "text-slate-400 hover:text-white hover:bg-white/5"
               }`}
             >
-              <item.icon className={`shrink-0 ${view === item.id ? "w-6 h-6 md:w-5 md:h-5 text-red-600 drop-shadow-md" : "w-5 h-5"}`} />
-              <span className={`md:block ${view === item.id ? "block" : "hidden sm:block"}`}>{item.label}</span>
+              <item.icon className={`shrink-0 transition-transform group-hover:scale-110 ${view === item.id ? "w-6 h-6 md:w-6 md:h-6 text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" : "w-5 h-5"}`} />
+              <span className={`tracking-wider uppercase ${view === item.id ? "block" : "hidden sm:block"}`}>{item.label}</span>
             </button>
           ))}
-        </nav>
+        </div>
 
-        <div className="hidden md:flex mt-auto pt-8 border-t border-slate-100 flex-col gap-4">
+        <div className="hidden md:flex mt-auto pt-4 border-t border-white/10 flex-col gap-2">
           {user ? (
-            <div className="flex flex-col gap-4">
+            <>
               <button 
                 onClick={() => setIsProfileModalOpen(true)}
-                className="flex items-center gap-3 p-3 rounded-xl transition-all w-full justify-start hover:bg-slate-50 group border border-slate-100"
+                className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 transition-colors mx-auto"
               >
-                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-slate-200 transition-colors shrink-0">
-                  <Settings className="w-4 h-4" />
-                </div>
-                <div className="flex flex-col min-w-0 text-left">
-                  <span className="text-sm font-bold text-slate-800 truncate">{user.displayName || "User"}</span>
-                  <span className="text-xs font-medium text-slate-500">Edit Profil</span>
-                </div>
+                <Settings className="w-5 h-5" />
               </button>
               <button 
                 onClick={handleLogout}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all w-full justify-start text-red-500 hover:bg-red-50"
+                className="flex items-center justify-center w-10 h-10 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 transition-colors mx-auto"
               >
-                <LogOut className="w-5 h-5 shrink-0" />
-                <span>Keluar</span>
+                <LogOut className="w-5 h-5" />
               </button>
-            </div>
+            </>
           ) : (
             <button 
               onClick={handleLogin}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all w-full justify-start bg-slate-900 text-white hover:bg-red-600 shadow-md shadow-slate-200"
+              className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-400 transition-colors mx-auto relative group"
             >
-              <LogIn className="w-5 h-5 shrink-0" />
-              <span>Masuk</span>
+              <LogIn className="w-5 h-5" />
+              <span className="absolute left-14 bg-white/10 backdrop-blur-md px-2 py-1 rounded-md text-xs opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">Masuk</span>
             </button>
           )}
         </div>
-      </aside>
+      </nav>
 
       {/* Main Content Wrapper */}
-      <div className="flex-1 md:ml-64 flex flex-col min-h-screen pb-20 md:pb-0">
+      <div className="flex-1 md:ml-24 flex flex-col min-h-screen pb-24 md:pb-0 relative z-10 w-full overflow-hidden">
+        {loginError && (
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 max-w-sm w-full bg-red-900/50 backdrop-blur-md border border-red-500/50 text-red-200 p-4 rounded-2xl shadow-2xl z-50 flex justify-between items-start">
+            <div>
+              <p className="font-bold text-sm">Gagal Login</p>
+              <p className="text-xs mt-1">{loginError}</p>
+            </div>
+            <button onClick={() => setLoginError(null)} className="text-red-500 hover:text-red-700 ml-2">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
         <main className="max-w-7xl mx-auto w-full px-4 md:px-8 py-12 flex-1">
         <AnimatePresence mode="wait">
           {view === "grid" && (
@@ -158,19 +174,20 @@ export default function App() {
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
             >
-              <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 md:mb-12 gap-6">
-                <div>
-                  <h2 className="text-4xl md:text-5xl font-black text-slate-900 mb-2 md:mb-4 tracking-tight leading-none uppercase">Jelajahi <br/><span className="text-red-600">Dunia Pokemon.</span></h2>
-                  <p className="text-slate-500 font-medium max-w-md text-sm md:text-base">Telusuri semua generasi 1-9. Pelajari statistik, tipe, dan kemampuan tersembunyi dari setiap Pokemon.</p>
-                </div>
-                <div className="flex gap-2 md:gap-4">
-                   <div className="p-3 md:p-4 bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col">
-                      <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Total Spesies</span>
-                      <span className="text-xl md:text-2xl font-black text-slate-900">1025+</span>
+              <div className="flex flex-col items-center justify-center mb-12 mt-8 text-center">
+                <h2 className="text-5xl md:text-7xl font-black mb-4 tracking-tighter uppercase !font-heading bg-gradient-to-br from-white to-slate-500 bg-clip-text text-transparent drop-shadow-sm">
+                  Poke<span className="text-transparent bg-clip-text bg-gradient-to-br from-red-400 to-red-600">Verse</span>
+                </h2>
+                <p className="text-slate-400 font-medium max-w-md text-sm md:text-base mb-8">Eksplorasi dengan pengalaman baru. Lebih cepat, lebih indah.</p>
+                
+                <div className="flex gap-4">
+                   <div className="px-6 py-3 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 flex flex-col items-center">
+                      <span className="text-2xl font-black text-white">1025</span>
+                      <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Spesies</span>
                    </div>
-                   <div className="p-3 md:p-4 bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col">
-                      <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Generasi</span>
-                      <span className="text-xl md:text-2xl font-black text-slate-900">1-9</span>
+                   <div className="px-6 py-3 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 flex flex-col items-center">
+                      <span className="text-2xl font-black text-white">1-9</span>
+                      <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Generasi</span>
                    </div>
                 </div>
               </div>
@@ -237,17 +254,9 @@ export default function App() {
         </AnimatePresence>
         </main>
 
-        <footer className="bg-white border-t border-slate-100 py-12 mt-auto">
+        <footer className="border-t border-white/5 py-8 mt-auto z-10 w-full backdrop-blur-xl bg-transparent">
           <div className="max-w-7xl mx-auto px-4 text-center">
-            <div className="flex items-center justify-center gap-3 mb-6">
-               <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center">
-                  <div className="w-3 h-3 bg-white rounded-full border border-slate-900 relative overflow-hidden">
-                    <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-slate-900 -translate-y-1/2" />
-                  </div>
-               </div>
-               <span className="text-sm font-black tracking-tighter uppercase italic text-slate-900">PokeVerse</span>
-            </div>
-            <p className="text-slate-400 text-xs font-medium">Bertenaga PokeAPI & Gemini AI. Dibuat untuk para Trainer di seluruh dunia.</p>
+            <p className="text-slate-500 text-xs font-medium">✨ Dibuat untuk pengalaman Pokemon terbaik.</p>
           </div>
         </footer>
       </div>
