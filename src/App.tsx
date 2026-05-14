@@ -123,29 +123,29 @@ export default function App() {
           ))}
         </div>
 
-        <div className="hidden md:flex mt-auto pt-4 border-t border-white/10 flex-col gap-2">
+        <div className="flex md:mt-auto md:pt-4 border-l md:border-l-0 md:border-t border-white/10 md:flex-col gap-1 items-center justify-center pl-2 md:pl-0 shrink-0">
           {user ? (
             <>
               <button 
                 onClick={() => setIsProfileModalOpen(true)}
-                className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 transition-colors mx-auto"
+                className="flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 transition-colors mx-auto"
               >
-                <Settings className="w-5 h-5" />
+                <Settings className="w-4 h-4 md:w-5 md:h-5" />
               </button>
               <button 
                 onClick={handleLogout}
-                className="flex items-center justify-center w-10 h-10 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 transition-colors mx-auto"
+                className="flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 transition-colors mx-auto"
               >
-                <LogOut className="w-5 h-5" />
+                <LogOut className="w-4 h-4 md:w-5 md:h-5" />
               </button>
             </>
           ) : (
             <button 
               onClick={handleLogin}
-              className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-400 transition-colors mx-auto relative group"
+              className="flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-400 transition-colors mx-auto relative group"
             >
-              <LogIn className="w-5 h-5" />
-              <span className="absolute left-14 bg-white/10 backdrop-blur-md px-2 py-1 rounded-md text-xs opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">Masuk</span>
+              <LogIn className="w-4 h-4 md:w-5 md:h-5" />
+              <span className="hidden md:block absolute left-14 bg-white/10 backdrop-blur-md px-2 py-1 rounded-md text-xs opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">Masuk</span>
             </button>
           )}
         </div>
