@@ -13,13 +13,24 @@ export const fetchAllPokemonNames = async (): Promise<{ name: string; id: number
   });
 };
 
-export const fetchPokemonByType = async (type: string): Promise<{ name: string; id: number }[]> => {
-  const response = await fetch(`${BASE_URL}/type/${type}`);
-  const data = await response.json();
-  return data.pokemon.map((p: any) => {
-    const segments = p.pokemon.url.split("/");
-    const id = parseInt(segments[segments.length - 2]);
-    return { name: p.pokemon.name, id };
+export const fetchPokemonByTypes = async (types: string[]): Promise<{ name: string; id: number }[]> => {
+  if (!types || types.length === 0) return [];
+  
+  const lists = await Promise.all(types.map(async (type) => {
+    const response = await fetch(`${BASE_URL}/type/${type}`);
+    const data = await response.json();
+    return data.pokemon.map((p: any) => {
+      const segments = p.pokemon.url.split("/");
+      const id = parseInt(segments[segments.length - 2]);
+      return { name: p.pokemon.name, id };
+    });
+  }));
+
+  if (lists.length === 1) return lists[0];
+  
+  const [firstList, ...restLists] = lists;
+  return firstList.filter(p => {
+    return restLists.every(list => list.some(item => item.id === p.id));
   });
 };
 

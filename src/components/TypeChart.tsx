@@ -113,13 +113,13 @@ export default function TypeChart() {
   };
 
   return (
-    <div className="bg-white rounded-3xl p-8 shadow-xl border border-slate-100">
+    <div className="bg-white/5 backdrop-blur-md rounded-3xl p-8 shadow-xl border border-white/10">
       <div className="text-center mb-10">
-        <div className="inline-flex p-3 bg-blue-100 rounded-2xl mb-4">
-          <ShieldCheck className="w-6 h-6 text-blue-600" />
+        <div className="inline-flex p-3 bg-blue-500/20 rounded-2xl mb-4">
+          <ShieldCheck className="w-6 h-6 text-blue-400" />
         </div>
-        <h2 className="text-3xl font-black text-slate-900 mb-2">Analisis Tipe Pokemon</h2>
-        <p className="text-slate-500">Pilih 1 atau 2 tipe untuk melihat kelemahan dan kekuatannya (Bertahan)</p>
+        <h2 className="text-3xl font-black text-white mb-2">Analisis Tipe Pokemon</h2>
+        <p className="text-slate-400">Pilih 1 atau 2 tipe untuk melihat kelemahan dan kekuatannya (Bertahan)</p>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-10">
@@ -129,10 +129,10 @@ export default function TypeChart() {
             <button
               key={type}
               onClick={() => toggleType(type)}
-              className={`p-3 rounded-xl flex items-center justify-center gap-2 border-2 font-bold uppercase tracking-wider text-xs transition-all ${
+              className={`p-3 rounded-xl flex items-center justify-center gap-2 border border-white/10 font-bold uppercase tracking-wider text-xs transition-all ${
                 isSelected 
                   ? `border-transparent shadow-md scale-105 ${typeColors[type]}` 
-                  : "border-slate-100 bg-white text-slate-500 hover:border-slate-200 hover:bg-slate-50"
+                  : "bg-white/5 text-slate-400 hover:border-white/20 hover:bg-white/10"
               }`}
             >
               <img 
@@ -153,7 +153,7 @@ export default function TypeChart() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="bg-slate-50 rounded-3xl p-6 border border-slate-100"
+            className="bg-black/20 rounded-3xl p-6 border border-white/5"
           >
             <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
               <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">Tipe Terpilih:</span>
@@ -163,13 +163,13 @@ export default function TypeChart() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Weaknesses */}
               <div className="space-y-4">
-                <div className="flex items-center gap-2 text-red-500 mb-4">
+                <div className="flex items-center gap-2 text-red-400 mb-4">
                   <Swords className="w-5 h-5" />
                   <h3 className="font-black uppercase tracking-widest">Kelemahan (Menerima Lebih Banyak Kerusakan)</h3>
                 </div>
                 
                 {defenses?.veryWeak.length ? (
-                   <div className="bg-white p-4 rounded-2xl shadow-sm">
+                   <div className="bg-white/5 p-4 rounded-2xl shadow-sm border border-red-500/10">
                       <span className="text-xs font-bold text-slate-400 block mb-2">Sangat Lemah (4x Damage)</span>
                       <div className="flex flex-wrap gap-2">
                         {defenses.veryWeak.map(t => <TypeBadge key={t} type={t} />)}
@@ -178,7 +178,7 @@ export default function TypeChart() {
                 ) : null}
 
                 {defenses?.weak.length ? (
-                   <div className="bg-white p-4 rounded-2xl shadow-sm">
+                   <div className="bg-white/5 p-4 rounded-2xl shadow-sm border border-white/5">
                       <span className="text-xs font-bold text-slate-400 block mb-2">Lemah (2x Damage)</span>
                       <div className="flex flex-wrap gap-2">
                         {defenses.weak.map(t => <TypeBadge key={t} type={t} />)}
@@ -187,19 +187,19 @@ export default function TypeChart() {
                 ) : null}
 
                 {!defenses?.veryWeak.length && !defenses?.weak.length && (
-                  <p className="text-sm text-slate-400 font-medium">Tidak ada kelemahan.</p>
+                  <p className="text-sm text-slate-500 font-medium">Tidak ada kelemahan.</p>
                 )}
               </div>
 
               {/* Resistances */}
               <div className="space-y-4">
-                <div className="flex items-center gap-2 text-green-500 mb-4">
+                <div className="flex items-center gap-2 text-green-400 mb-4">
                   <ShieldCheck className="w-5 h-5" />
                   <h3 className="font-black uppercase tracking-widest">Ketahanan (Menerima Lebih Sedikit Kerusakan)</h3>
                 </div>
                 
                 {defenses?.immune.length ? (
-                   <div className="bg-white p-4 rounded-2xl shadow-sm border-2 border-green-100">
+                   <div className="bg-white/5 p-4 rounded-2xl shadow-sm border border-green-500/20">
                       <span className="text-xs font-bold text-slate-400 block mb-2 flex items-center gap-1">
                         <ShieldOff className="w-3 h-3" /> Kebal (0x Damage)
                       </span>
@@ -210,7 +210,7 @@ export default function TypeChart() {
                 ) : null}
 
                 {defenses?.veryResist.length ? (
-                   <div className="bg-white p-4 rounded-2xl shadow-sm">
+                   <div className="bg-white/5 p-4 rounded-2xl shadow-sm border border-white/5">
                       <span className="text-xs font-bold text-slate-400 block mb-2">Sangat Tahan (0.25x Damage)</span>
                       <div className="flex flex-wrap gap-2">
                         {defenses.veryResist.map(t => <TypeBadge key={t} type={t} />)}
@@ -219,7 +219,7 @@ export default function TypeChart() {
                 ) : null}
 
                 {defenses?.resist.length ? (
-                   <div className="bg-white p-4 rounded-2xl shadow-sm">
+                   <div className="bg-white/5 p-4 rounded-2xl shadow-sm border border-white/5">
                       <span className="text-xs font-bold text-slate-400 block mb-2">Tahan (0.5x Damage)</span>
                       <div className="flex flex-wrap gap-2">
                         {defenses.resist.map(t => <TypeBadge key={t} type={t} />)}
@@ -228,7 +228,7 @@ export default function TypeChart() {
                 ) : null}
                 
                 {!defenses?.immune.length && !defenses?.veryResist.length && !defenses?.resist.length && (
-                  <p className="text-sm text-slate-400 font-medium">Tidak ada ketahanan.</p>
+                  <p className="text-sm text-slate-500 font-medium">Tidak ada ketahanan.</p>
                 )}
               </div>
             </div>

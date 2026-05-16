@@ -4,7 +4,7 @@ import { typeHexColors } from "./PokemonCard";
 
 interface Props {
   onSearch: (query: string) => void;
-  onFilterType: (type: string) => void;
+  onFilterType: (types: string[]) => void;
   onFilterGen: (gen: string) => void;
 }
 
@@ -27,7 +27,7 @@ const GENERATIONS = [
 ];
 
 export default function SearchFilter({ onSearch, onFilterType, onFilterGen }: Props) {
-  const [activeType, setActiveType] = useState<string>("");
+  const [activeTypes, setActiveTypes] = useState<string[]>([]);
   const [activeGen, setActiveGen] = useState<string>("");
   
   const genScrollRef = useRef<HTMLDivElement>(null);
@@ -57,9 +57,19 @@ export default function SearchFilter({ onSearch, onFilterType, onFilterGen }: Pr
   };
 
   const handleTypeClick = (type: string) => {
-    const newType = activeType === type ? "" : type;
-    setActiveType(newType);
-    onFilterType(newType);
+    let newTypes = [...activeTypes];
+    if (newTypes.includes(type)) {
+      newTypes = newTypes.filter(t => t !== type);
+    } else {
+      if (newTypes.length < 2) {
+        newTypes.push(type);
+      } else {
+        newTypes.shift();
+        newTypes.push(type);
+      }
+    }
+    setActiveTypes(newTypes);
+    onFilterType(newTypes);
   };
 
   const handleGenClick = (gen: string) => {
@@ -122,9 +132,9 @@ export default function SearchFilter({ onSearch, onFilterType, onFilterGen }: Pr
            <div className="flex items-center justify-center shrink-0 px-4 text-slate-400 font-bold uppercase tracking-widest text-xs pointer-events-none">
              Type:
            </div>
-           {ALL_TYPES.map(t => {
+            {ALL_TYPES.map(t => {
              const color = typeHexColors[t];
-             const isActive = activeType === t;
+             const isActive = activeTypes.includes(t);
              return (
                <button
                  key={t}

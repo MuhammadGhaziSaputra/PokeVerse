@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { fetchPokemonList, fetchAllPokemonNames, fetchPokemonByList, fetchPokemonByType } from "../services/pokeApi";
+import { fetchPokemonList, fetchAllPokemonNames, fetchPokemonByList, fetchPokemonByTypes } from "../services/pokeApi";
 import { PokemonBasic } from "../types";
 import PokemonCard from "./PokemonCard";
 import { Loader2 } from "lucide-react";
@@ -8,7 +8,7 @@ import { motion } from "motion/react";
 interface Props {
   onSelect: (id: number) => void;
   searchQuery: string;
-  typeFilter: string;
+  typeFilter: string[];
   genFilter: string;
 }
 
@@ -87,7 +87,7 @@ export default function PokemonGrid({ onSelect, searchQuery, typeFilter, genFilt
     const handleSearch = async () => {
       setHasMoreSearch(true);
       // If no query and no filter, we just show the standard paginated list
-      if (!searchQuery && !typeFilter && !genFilter) {
+      if (!searchQuery && typeFilter.length === 0 && !genFilter) {
         if (mounted) {
           setFilteredNames([]);
           setSearchResults([]);
@@ -102,8 +102,8 @@ export default function PokemonGrid({ onSelect, searchQuery, typeFilter, genFilt
         const genRange = genFilter ? getGenRange(genFilter) : null;
         
         let baseList = allNames;
-        if (typeFilter) {
-          baseList = await fetchPokemonByType(typeFilter);
+        if (typeFilter.length > 0) {
+          baseList = await fetchPokemonByTypes(typeFilter);
         }
         
         // Filter from the list of names
@@ -158,7 +158,7 @@ export default function PokemonGrid({ onSelect, searchQuery, typeFilter, genFilt
     
     setLoading(true);
     try {
-      const isInSearchMode = searchQuery || typeFilter || genFilter;
+      const isInSearchMode = searchQuery || typeFilter.length > 0 || genFilter;
       
       if (isInSearchMode) {
         // Load more search results
@@ -185,7 +185,7 @@ export default function PokemonGrid({ onSelect, searchQuery, typeFilter, genFilt
     }
   };
 
-  const isInSearchMode = searchQuery || typeFilter || genFilter;
+  const isInSearchMode = searchQuery || typeFilter.length > 0 || genFilter;
   const currentDisplay = isInSearchMode ? searchResults : pokemon;
   
   const [hasMoreSearch, setHasMoreSearch] = useState(true);

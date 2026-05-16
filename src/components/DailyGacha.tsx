@@ -41,6 +41,23 @@ export default function DailyGacha() {
   const [caughtPokemonDetail, setCaughtPokemonDetail] = useState<PokemonDetail | null>(null);
   const [collectionList, setCollectionList] = useState<any[]>([]);
 
+  // Missions State
+  const [missions, setMissions] = useState({
+    login: true,
+    throwPractice: false,
+    cleanPokedex: false,
+    feedPokemon: false,
+    greetProfessor: false
+  });
+  const [claimingMission, setClaimingMission] = useState<string | null>(null);
+
+  const [missionStates, setMissionStates] = useState({
+    throwClicks: 0,
+    cleanClicks: 0,
+    greetInput: "",
+    feedClicks: 0
+  });
+
   // Trivia States
   const [triviaStage, setTriviaStage] = useState<'idle'|'loading'|'playing'|'won'|'lost'>('idle');
   const [triviaOptions, setTriviaOptions] = useState<any[]>([]);
@@ -67,6 +84,13 @@ export default function DailyGacha() {
 
       let currentTokens = 0;
       let hasTriviaToday = false;
+      let loadedMissions = {
+        login: true,
+        throwPractice: false,
+        cleanPokedex: false,
+        feedPokemon: false,
+        greetProfessor: false
+      };
 
       if (userDoc.exists()) {
         const data = userDoc.data();
@@ -78,9 +102,11 @@ export default function DailyGacha() {
           await setDoc(userRef, { lastLoginDate: today, tokens: currentTokens }, { merge: true });
         }
 
-        if (data.lastTriviaDate === today) {
-          hasTriviaToday = true;
-        }
+        if (data.lastTriviaDate === today) hasTriviaToday = true;
+        if (data.lastThrowPracticeDate === today) loadedMissions.throwPractice = true;
+        if (data.lastCleanPokedexDate === today) loadedMissions.cleanPokedex = true;
+        if (data.lastFeedPokemonDate === today) loadedMissions.feedPokemon = true;
+        if (data.lastGreetProfessorDate === today) loadedMissions.greetProfessor = true;
       } else {
         // New User today
         currentTokens = 1;
@@ -88,6 +114,7 @@ export default function DailyGacha() {
       }
 
       setTokens(currentTokens);
+      setMissions(loadedMissions);
       setCanPlayTrivia(!hasTriviaToday);
     } catch (e) {
       console.error(e);
@@ -106,6 +133,26 @@ export default function DailyGacha() {
       setCollectionList(items);
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleClaimMission = async (missionId: keyof typeof missions, dbField: string) => {
+    if (!user || missions[missionId] || claimingMission) return;
+    setClaimingMission(missionId);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const userRef = doc(db, "users", user.uid);
+      
+      const newTokens = tokens + 1;
+      await setDoc(userRef, { tokens: newTokens, [dbField]: today }, { merge: true });
+      
+      setTokens(newTokens);
+      setMissions(prev => ({ ...prev, [missionId]: true }));
+    } catch (e) {
+      console.error(e);
+      alert("Gagal mengklaim misi.");
+    } finally {
+      setClaimingMission(null);
     }
   };
 
@@ -245,23 +292,126 @@ export default function DailyGacha() {
     <div className="space-y-12">
       {/* Header Info */}
       <div className="flex justify-end mb-4">
-        <div className="bg-white px-4 py-2 rounded-full font-bold text-slate-800 shadow-sm border border-slate-100 flex items-center gap-2">
+        <div className="bg-[#131b2f] px-4 py-2 rounded-full font-bold text-white shadow-sm border border-white/10 flex items-center gap-2">
           <Coins className="w-5 h-5 text-amber-500" />
           <span>{tokens} Token Gacha</span>
         </div>
       </div>
 
+      {/* Daily Missions */}
+      <div className="bg-white/5 backdrop-blur-md rounded-3xl p-8 border border-white/10 shadow-sm">
+         <h2 className="text-2xl font-black text-white mb-6 flex items-center gap-3 uppercase tracking-tight">
+            <CheckCircle2 className="w-7 h-7 text-green-500" />
+            Misi Mudah Harian
+         </h2>
+         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col justify-between">
+               <div>
+                  <h3 className="font-bold text-white">Login Harian</h3>
+                  <p className="text-xs text-slate-400 mt-1 mb-4">Masuk ke dalam aplikasi hari ini.</p>
+               </div>
+               <button disabled className="bg-white/10 text-slate-400 px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" /> Selesai (+1)
+               </button>
+            </div>
+
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col justify-between">
+               <div>
+                  <h3 className="font-bold text-white">Latihan Lempar</h3>
+                  <p className="text-xs text-slate-400 mt-1 mb-4">Lakukan 3 lemparan pemanasan Pokeball.</p>
+               </div>
+               {missions.throwPractice ? (
+                  <button disabled className="bg-white/10 text-slate-400 px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-2">
+                     <CheckCircle2 className="w-4 h-4" /> Selesai (+1)
+                  </button>
+               ) : missionStates.throwClicks < 3 ? (
+                  <button onClick={() => setMissionStates(p => ({...p, throwClicks: p.throwClicks + 1}))} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 px-4 py-2 rounded-xl font-bold transition-all active:scale-95">
+                     Lempar ({missionStates.throwClicks}/3)
+                  </button>
+               ) : (
+                  <button onClick={() => handleClaimMission('throwPractice', 'lastThrowPracticeDate')} disabled={claimingMission !== null} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50">
+                     Klaim Token (+1)
+                  </button>
+               )}
+            </div>
+
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col justify-between">
+               <div>
+                  <h3 className="font-bold text-white">Rapikan Pokedex</h3>
+                  <p className="text-xs text-slate-400 mt-1 mb-4">Bersihkan 5 debu di Pokedex.</p>
+               </div>
+               {missions.cleanPokedex ? (
+                  <button disabled className="bg-white/10 text-slate-400 px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-2">
+                     <CheckCircle2 className="w-4 h-4" /> Selesai (+1)
+                  </button>
+               ) : missionStates.cleanClicks < 5 ? (
+                  <button onClick={() => setMissionStates(p => ({...p, cleanClicks: p.cleanClicks + 1}))} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 px-4 py-2 rounded-xl font-bold transition-all active:scale-95">
+                     Bersihkan ({missionStates.cleanClicks}/5)
+                  </button>
+               ) : (
+                  <button onClick={() => handleClaimMission('cleanPokedex', 'lastCleanPokedexDate')} disabled={claimingMission !== null} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50">
+                     Klaim Token (+1)
+                  </button>
+               )}
+            </div>
+
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col justify-between">
+               <div>
+                  <h3 className="font-bold text-white">Sapa Profesor</h3>
+                  <p className="text-xs text-slate-400 mt-1 mb-4">Ketik &quot;Halo&quot; untuk menyapa.</p>
+               </div>
+               {missions.greetProfessor ? (
+                  <button disabled className="bg-white/10 text-slate-400 px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-2">
+                     <CheckCircle2 className="w-4 h-4" /> Selesai (+1)
+                  </button>
+               ) : missionStates.greetInput.toLowerCase() !== 'halo' ? (
+                  <input 
+                     type="text" 
+                     placeholder="Ketik 'Halo'" 
+                     value={missionStates.greetInput}
+                     onChange={(e) => setMissionStates(p => ({...p, greetInput: e.target.value}))}
+                     className="w-full bg-white/5 border border-white/10 text-white placeholder-slate-400 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+               ) : (
+                  <button onClick={() => handleClaimMission('greetProfessor', 'lastGreetProfessorDate')} disabled={claimingMission !== null} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50">
+                     Klaim Token (+1)
+                  </button>
+               )}
+            </div>
+
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col justify-between">
+               <div>
+                  <h3 className="font-bold text-white">Beri Makan</h3>
+                  <p className="text-xs text-slate-400 mt-1 mb-4">Beri 5 berry ke Pokemon.</p>
+               </div>
+               {missions.feedPokemon ? (
+                  <button disabled className="bg-white/10 text-slate-400 px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-2">
+                     <CheckCircle2 className="w-4 h-4" /> Selesai (+1)
+                  </button>
+               ) : missionStates.feedClicks < 5 ? (
+                  <button onClick={() => setMissionStates(p => ({...p, feedClicks: p.feedClicks + 1}))} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 px-4 py-2 rounded-xl font-bold transition-all active:scale-95">
+                     Beri Berry ({missionStates.feedClicks}/5)
+                  </button>
+               ) : (
+                  <button onClick={() => handleClaimMission('feedPokemon', 'lastFeedPokemonDate')} disabled={claimingMission !== null} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50">
+                     Klaim Token (+1)
+                  </button>
+               )}
+            </div>
+         </div>
+      </div>
+
       {/* Gacha Section */}
-      <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm relative overflow-hidden">
-        <div className="absolute inset-0 bg-red-600/5 rotate-3 scale-110 -translate-x-1/4 rounded-[100px]" />
+      <div className="bg-white/5 backdrop-blur-md rounded-3xl p-8 border border-white/10 shadow-sm relative overflow-hidden">
+        <div className="absolute inset-0 bg-red-600/10 rotate-3 scale-110 -translate-x-1/4 rounded-[100px]" />
         
         <div className="relative flex justify-between items-center z-10 flex-col md:flex-row gap-6 text-center md:text-left">
           <div>
-            <h2 className="text-3xl font-black text-slate-900 flex items-center justify-center md:justify-start gap-3 uppercase tracking-tight mb-2">
+            <h2 className="text-3xl font-black text-white flex items-center justify-center md:justify-start gap-3 uppercase tracking-tight mb-2">
               <Gift className="w-8 h-8 text-red-500" />
               Tangkap Harian
             </h2>
-            <p className="text-slate-500 max-w-md font-medium">Gunakan 1 Token untuk menangkap Pokemon acak! Kamu mendapatkan 1 Token gratis setiap hari dari login.</p>
+            <p className="text-slate-400 max-w-md font-medium">Gunakan 1 Token untuk menangkap Pokemon acak! Kamu mendapatkan 1 Token gratis setiap hari dari login.</p>
           </div>
           
           <div className="flex flex-col items-center">
@@ -279,7 +429,7 @@ export default function DailyGacha() {
                 )}
               </button>
             ) : (
-              <div className="bg-slate-100 text-slate-500 px-6 py-4 rounded-xl font-bold border border-slate-200 flex flex-col items-center">
+              <div className="bg-white/5 text-slate-400 px-6 py-4 rounded-xl font-bold border border-white/10 flex flex-col items-center">
                 <span>Token Habis</span>
                 <span className="text-xs mt-1 opacity-80">Selesaikan misi untuk tambahan token!</span>
               </div>
@@ -304,7 +454,7 @@ export default function DailyGacha() {
                   <p className="mb-6 text-indigo-100 font-medium">Tebak siluet Pokemon ini dengan benar untuk mendapatkan 1 Token Gacha tambahan!</p>
                   <button 
                     onClick={startTrivia}
-                    className="bg-white text-indigo-600 hover:bg-indigo-50 px-6 py-3 rounded-xl font-black uppercase tracking-wider transition-all shadow-lg shadow-black/10 active:scale-95"
+                    className="bg-white text-indigo-900 hover:bg-white/90 border border-white/20 px-6 py-3 rounded-xl font-black uppercase tracking-wider transition-all shadow-lg shadow-black/10 active:scale-95"
                   >
                     Mulai Main
                   </button>
@@ -334,7 +484,7 @@ export default function DailyGacha() {
                           <button 
                             key={opt.id}
                             onClick={() => handleAnswer(opt.id)}
-                            className="bg-white/20 hover:bg-white border border-white/30 hover:border-white hover:text-indigo-600 px-4 py-3 rounded-xl font-bold uppercase tracking-wider transition-all active:scale-95 text-sm"
+                            className="bg-white/10 hover:bg-white/20 border border-white/30 hover:border-white text-white px-4 py-3 rounded-xl font-bold uppercase tracking-wider transition-all active:scale-95 text-sm"
                           >
                             {opt.name}
                           </button>
@@ -563,10 +713,10 @@ export default function DailyGacha() {
 
       {/* Collection Gallery */}
       <div>
-        <h3 className="text-2xl font-black text-slate-800 mb-6 uppercase tracking-tight">Koleksi Saya ({collectionList.length})</h3>
+        <h3 className="text-2xl font-black text-white mb-6 uppercase tracking-tight">Koleksi Saya ({collectionList.length})</h3>
         
         {collectionList.length === 0 ? (
-          <div className="text-center py-12 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl text-slate-500 font-medium">
+          <div className="text-center py-12 bg-white/5 border-2 border-dashed border-white/20 rounded-2xl text-slate-400 font-medium">
             Belum ada Pokemon di koleksimu. Tangkap sekarang!
           </div>
         ) : (

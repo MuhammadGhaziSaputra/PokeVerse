@@ -35,7 +35,7 @@ export default function App() {
   const [selectedPokemon, setSelectedPokemon] = useState<IPokemonDetail | null>(null);
   const [view, setView] = useState<View>("grid");
   const [searchQuery, setSearchQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState<string[]>([]);
   const [genFilter, setGenFilter] = useState("");
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
