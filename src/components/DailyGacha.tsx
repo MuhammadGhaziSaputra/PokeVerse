@@ -4,7 +4,7 @@ import { auth, db } from "../services/firebase";
 import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { fetchPokemonDetail } from "../services/pokeApi";
 import { PokemonDetail } from "../types";
-import { LogIn, Gift, Sparkles, Coins, Gamepad2, CheckCircle2, XCircle } from "lucide-react";
+import { LogIn, Gift, Sparkles, Coins, Gamepad2, CheckCircle2, XCircle, RotateCcw } from "lucide-react";
 
 const MYTHICALS = [151, 251, 385, 386, 489, 490, 491, 492, 493, 494, 647, 648, 649, 719, 720, 721, 801, 802, 807, 808, 809, 893];
 const LEGENDARIES = [144, 145, 146, 150, 243, 244, 245, 249, 250, 377, 378, 379, 380, 381, 382, 383, 384, 480, 481, 482, 483, 484, 485, 486, 487, 488, 638, 639, 640, 641, 642, 643, 644, 645, 646, 716, 717, 718, 772, 773, 785, 786, 787, 788, 789, 790, 791, 792, 800, 888, 889, 890, 891, 892, 894, 895, 896, 897, 898];
@@ -36,32 +36,27 @@ export default function DailyGacha() {
   const [loading, setLoading] = useState(true);
   const [tokens, setTokens] = useState(0);
   const [canPlayTrivia, setCanPlayTrivia] = useState(false);
+  const [canPlayTypeTrivia, setCanPlayTypeTrivia] = useState(false);
+  const [canPlayStatTrivia, setCanPlayStatTrivia] = useState(false);
   const [gachaStage, setGachaStage] = useState<'idle' | 'fetching' | 'ready' | 'opening'>('idle');
   const [pendingPokemon, setPendingPokemon] = useState<PokemonDetail | null>(null);
   const [caughtPokemonDetail, setCaughtPokemonDetail] = useState<PokemonDetail | null>(null);
   const [collectionList, setCollectionList] = useState<any[]>([]);
 
-  // Missions State
-  const [missions, setMissions] = useState({
-    login: true,
-    throwPractice: false,
-    cleanPokedex: false,
-    feedPokemon: false,
-    greetProfessor: false
-  });
-  const [claimingMission, setClaimingMission] = useState<string | null>(null);
-
-  const [missionStates, setMissionStates] = useState({
-    throwClicks: 0,
-    cleanClicks: 0,
-    greetInput: "",
-    feedClicks: 0
-  });
-
-  // Trivia States
+  // Trivia 1 States
   const [triviaStage, setTriviaStage] = useState<'idle'|'loading'|'playing'|'won'|'lost'>('idle');
   const [triviaOptions, setTriviaOptions] = useState<any[]>([]);
   const [triviaAnswer, setTriviaAnswer] = useState<any>(null);
+
+  // Trivia 2 States (Tebak Tipe)
+  const [typeTriviaStage, setTypeTriviaStage] = useState<'idle'|'loading'|'playing'|'won'|'lost'>('idle');
+  const [typeTriviaOptions, setTypeTriviaOptions] = useState<string[]>([]);
+  const [typeTriviaAnswer, setTypeTriviaAnswer] = useState<any>(null);
+
+  // Trivia 3 States (Tebak Prioritas Stat/Highest Stat)
+  const [statTriviaStage, setStatTriviaStage] = useState<'idle'|'loading'|'playing'|'won'|'lost'>('idle');
+  const [statTriviaOptions, setStatTriviaOptions] = useState<string[]>(['hp', 'attack', 'defense', 'special-attack', 'special-defense', 'speed']);
+  const [statTriviaAnswer, setStatTriviaAnswer] = useState<any>(null);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((u) => {
@@ -84,13 +79,8 @@ export default function DailyGacha() {
 
       let currentTokens = 0;
       let hasTriviaToday = false;
-      let loadedMissions = {
-        login: true,
-        throwPractice: false,
-        cleanPokedex: false,
-        feedPokemon: false,
-        greetProfessor: false
-      };
+      let hasTypeTriviaToday = false;
+      let hasStatTriviaToday = false;
 
       if (userDoc.exists()) {
         const data = userDoc.data();
@@ -103,10 +93,8 @@ export default function DailyGacha() {
         }
 
         if (data.lastTriviaDate === today) hasTriviaToday = true;
-        if (data.lastThrowPracticeDate === today) loadedMissions.throwPractice = true;
-        if (data.lastCleanPokedexDate === today) loadedMissions.cleanPokedex = true;
-        if (data.lastFeedPokemonDate === today) loadedMissions.feedPokemon = true;
-        if (data.lastGreetProfessorDate === today) loadedMissions.greetProfessor = true;
+        if (data.lastTypeTriviaDate === today) hasTypeTriviaToday = true;
+        if (data.lastStatTriviaDate === today) hasStatTriviaToday = true;
       } else {
         // New User today
         currentTokens = 1;
@@ -114,8 +102,9 @@ export default function DailyGacha() {
       }
 
       setTokens(currentTokens);
-      setMissions(loadedMissions);
       setCanPlayTrivia(!hasTriviaToday);
+      setCanPlayTypeTrivia(!hasTypeTriviaToday);
+      setCanPlayStatTrivia(!hasStatTriviaToday);
     } catch (e) {
       console.error(e);
     } finally {
@@ -136,30 +125,29 @@ export default function DailyGacha() {
     }
   };
 
-  const handleClaimMission = async (missionId: keyof typeof missions, dbField: string) => {
-    if (!user || missions[missionId] || claimingMission) return;
-    setClaimingMission(missionId);
+  const resetMissionsForDemo = async () => {
+    if (!user) return;
     try {
-      const today = new Date().toISOString().split('T')[0];
       const userRef = doc(db, "users", user.uid);
+      await setDoc(userRef, { 
+        lastTriviaDate: null,
+        lastTypeTriviaDate: null,
+        lastStatTriviaDate: null
+      }, { merge: true });
       
-      const newTokens = tokens + 1;
-      await setDoc(userRef, { tokens: newTokens, [dbField]: today }, { merge: true });
-      
-      setTokens(newTokens);
-      setMissions(prev => ({ ...prev, [missionId]: true }));
+      setCanPlayTrivia(true);
+      setCanPlayTypeTrivia(true);
+      setCanPlayStatTrivia(true);
+      alert("Misi berhasil di-reset untuk demo!");
     } catch (e) {
       console.error(e);
-      alert("Gagal mengklaim misi.");
-    } finally {
-      setClaimingMission(null);
+      alert("Gagal mereset misi: " + (e as Error).message);
     }
   };
 
   const handleCatch = async () => {
     if (!user || gachaStage !== 'idle' || tokens <= 0) return;
     setGachaStage('fetching');
-    
     try {
       const minDelay = new Promise(resolve => setTimeout(resolve, 1500));
       const randomId = getRandomPokemonId();
@@ -272,6 +260,100 @@ export default function DailyGacha() {
     setCanPlayTrivia(false);
   };
 
+  const startTypeTrivia = async () => {
+    setTypeTriviaStage('loading');
+    try {
+      const id = Math.floor(Math.random() * 1025) + 1;
+      const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
+      const data = await res.json();
+      
+      const realType = data.types[0].type.name;
+      const allTypes = ["normal", "fire", "water", "electric", "grass", "ice", "fighting", "poison", "ground", "flying", "psychic", "bug", "rock", "ghost", "dragon", "dark", "steel", "fairy"];
+      
+      const options = [realType];
+      while(options.length < 4) {
+        const randomType = allTypes[Math.floor(Math.random() * allTypes.length)];
+        if (!options.includes(randomType)) options.push(randomType);
+      }
+      options.sort(() => Math.random() - 0.5);
+      
+      setTypeTriviaOptions(options);
+      setTypeTriviaAnswer({
+        image: data.sprites?.other?.["official-artwork"]?.front_default,
+        name: data.name,
+        type: realType
+      });
+      setTypeTriviaStage('playing');
+    } catch (e) {
+      setTypeTriviaStage('idle');
+    }
+  };
+
+  const handleTypeAnswer = async (selectedType: string) => {
+    if (!user) return;
+    const isCorrect = selectedType === typeTriviaAnswer.type;
+    const today = new Date().toISOString().split('T')[0];
+    const userRef = doc(db, "users", user.uid);
+
+    if (isCorrect) {
+      setTypeTriviaStage('won');
+      const newTokens = tokens + 1;
+      setTokens(newTokens);
+      await setDoc(userRef, { tokens: newTokens, lastTypeTriviaDate: today }, { merge: true });
+    } else {
+      setTypeTriviaStage('lost');
+      await setDoc(userRef, { lastTypeTriviaDate: today }, { merge: true });
+    }
+    setCanPlayTypeTrivia(false);
+  };
+
+  const startStatTrivia = async () => {
+    setStatTriviaStage('loading');
+    try {
+      const id = Math.floor(Math.random() * 1025) + 1;
+      const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
+      const data = await res.json();
+      
+      let highestValue = -1;
+      let highestStat = "";
+      
+      data.stats.forEach((s: any) => {
+         if (s.base_stat > highestValue) {
+            highestValue = s.base_stat;
+            highestStat = s.stat.name;
+         }
+      });
+      
+      setStatTriviaOptions(['hp', 'attack', 'defense', 'special-attack', 'special-defense', 'speed']);
+      setStatTriviaAnswer({
+        image: data.sprites?.other?.["official-artwork"]?.front_default,
+        name: data.name,
+        highestStat: highestStat
+      });
+      setStatTriviaStage('playing');
+    } catch (e) {
+      setStatTriviaStage('idle');
+    }
+  };
+
+  const handleStatAnswer = async (selectedStat: string) => {
+    if (!user) return;
+    const isCorrect = selectedStat === statTriviaAnswer.highestStat;
+    const today = new Date().toISOString().split('T')[0];
+    const userRef = doc(db, "users", user.uid);
+
+    if (isCorrect) {
+      setStatTriviaStage('won');
+      const newTokens = tokens + 1;
+      setTokens(newTokens);
+      await setDoc(userRef, { tokens: newTokens, lastStatTriviaDate: today }, { merge: true });
+    } else {
+      setStatTriviaStage('lost');
+      await setDoc(userRef, { lastStatTriviaDate: today }, { merge: true });
+    }
+    setCanPlayStatTrivia(false);
+  };
+
   if (loading) {
     return <div className="flex justify-center items-center h-64 text-slate-500 font-medium">Memuat data...</div>;
   }
@@ -296,109 +378,6 @@ export default function DailyGacha() {
           <Coins className="w-5 h-5 text-amber-500" />
           <span>{tokens} Token Gacha</span>
         </div>
-      </div>
-
-      {/* Daily Missions */}
-      <div className="bg-white/5 backdrop-blur-md rounded-3xl p-8 border border-white/10 shadow-sm">
-         <h2 className="text-2xl font-black text-white mb-6 flex items-center gap-3 uppercase tracking-tight">
-            <CheckCircle2 className="w-7 h-7 text-green-500" />
-            Misi Mudah Harian
-         </h2>
-         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col justify-between">
-               <div>
-                  <h3 className="font-bold text-white">Login Harian</h3>
-                  <p className="text-xs text-slate-400 mt-1 mb-4">Masuk ke dalam aplikasi hari ini.</p>
-               </div>
-               <button disabled className="bg-white/10 text-slate-400 px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-2">
-                  <CheckCircle2 className="w-4 h-4" /> Selesai (+1)
-               </button>
-            </div>
-
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col justify-between">
-               <div>
-                  <h3 className="font-bold text-white">Latihan Lempar</h3>
-                  <p className="text-xs text-slate-400 mt-1 mb-4">Lakukan 3 lemparan pemanasan Pokeball.</p>
-               </div>
-               {missions.throwPractice ? (
-                  <button disabled className="bg-white/10 text-slate-400 px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-2">
-                     <CheckCircle2 className="w-4 h-4" /> Selesai (+1)
-                  </button>
-               ) : missionStates.throwClicks < 3 ? (
-                  <button onClick={() => setMissionStates(p => ({...p, throwClicks: p.throwClicks + 1}))} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 px-4 py-2 rounded-xl font-bold transition-all active:scale-95">
-                     Lempar ({missionStates.throwClicks}/3)
-                  </button>
-               ) : (
-                  <button onClick={() => handleClaimMission('throwPractice', 'lastThrowPracticeDate')} disabled={claimingMission !== null} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50">
-                     Klaim Token (+1)
-                  </button>
-               )}
-            </div>
-
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col justify-between">
-               <div>
-                  <h3 className="font-bold text-white">Rapikan Pokedex</h3>
-                  <p className="text-xs text-slate-400 mt-1 mb-4">Bersihkan 5 debu di Pokedex.</p>
-               </div>
-               {missions.cleanPokedex ? (
-                  <button disabled className="bg-white/10 text-slate-400 px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-2">
-                     <CheckCircle2 className="w-4 h-4" /> Selesai (+1)
-                  </button>
-               ) : missionStates.cleanClicks < 5 ? (
-                  <button onClick={() => setMissionStates(p => ({...p, cleanClicks: p.cleanClicks + 1}))} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 px-4 py-2 rounded-xl font-bold transition-all active:scale-95">
-                     Bersihkan ({missionStates.cleanClicks}/5)
-                  </button>
-               ) : (
-                  <button onClick={() => handleClaimMission('cleanPokedex', 'lastCleanPokedexDate')} disabled={claimingMission !== null} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50">
-                     Klaim Token (+1)
-                  </button>
-               )}
-            </div>
-
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col justify-between">
-               <div>
-                  <h3 className="font-bold text-white">Sapa Profesor</h3>
-                  <p className="text-xs text-slate-400 mt-1 mb-4">Ketik &quot;Halo&quot; untuk menyapa.</p>
-               </div>
-               {missions.greetProfessor ? (
-                  <button disabled className="bg-white/10 text-slate-400 px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-2">
-                     <CheckCircle2 className="w-4 h-4" /> Selesai (+1)
-                  </button>
-               ) : missionStates.greetInput.toLowerCase() !== 'halo' ? (
-                  <input 
-                     type="text" 
-                     placeholder="Ketik 'Halo'" 
-                     value={missionStates.greetInput}
-                     onChange={(e) => setMissionStates(p => ({...p, greetInput: e.target.value}))}
-                     className="w-full bg-white/5 border border-white/10 text-white placeholder-slate-400 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-               ) : (
-                  <button onClick={() => handleClaimMission('greetProfessor', 'lastGreetProfessorDate')} disabled={claimingMission !== null} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50">
-                     Klaim Token (+1)
-                  </button>
-               )}
-            </div>
-
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col justify-between">
-               <div>
-                  <h3 className="font-bold text-white">Beri Makan</h3>
-                  <p className="text-xs text-slate-400 mt-1 mb-4">Beri 5 berry ke Pokemon.</p>
-               </div>
-               {missions.feedPokemon ? (
-                  <button disabled className="bg-white/10 text-slate-400 px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-2">
-                     <CheckCircle2 className="w-4 h-4" /> Selesai (+1)
-                  </button>
-               ) : missionStates.feedClicks < 5 ? (
-                  <button onClick={() => setMissionStates(p => ({...p, feedClicks: p.feedClicks + 1}))} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 px-4 py-2 rounded-xl font-bold transition-all active:scale-95">
-                     Beri Berry ({missionStates.feedClicks}/5)
-                  </button>
-               ) : (
-                  <button onClick={() => handleClaimMission('feedPokemon', 'lastFeedPokemonDate')} disabled={claimingMission !== null} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50">
-                     Klaim Token (+1)
-                  </button>
-               )}
-            </div>
-         </div>
       </div>
 
       {/* Gacha Section */}
@@ -521,6 +500,185 @@ export default function DailyGacha() {
                <XCircle className="w-8 h-8 text-red-500 shrink-0" />
                <div>
                   <p className="text-lg">Tebakanmu Salah!</p>
+                  <p className="text-sm font-medium opacity-80">Sayang sekali, coba lagi besok ya.</p>
+               </div>
+            </motion.div>
+         )}
+      </AnimatePresence>
+
+      {/* Type Trivia Mission */}
+      {canPlayTypeTrivia && (
+        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-3xl p-8 text-white relative overflow-hidden shadow-lg border border-emerald-400/30 mt-6">
+          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10" />
+          
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-4">
+              <Gamepad2 className="w-8 h-8 text-emerald-200" />
+              <h2 className="text-2xl font-black uppercase tracking-tight">Misi Harian: Tebak Tipe Pokemon</h2>
+            </div>
+            
+            {typeTriviaStage === 'idle' && (
+               <div>
+                  <p className="mb-6 text-emerald-100 font-medium">Tebak tipe dari Pokemon di bawah ini untuk mendapatkan 1 Token Gacha lagi!</p>
+                  <button 
+                    onClick={startTypeTrivia}
+                    className="bg-white text-emerald-900 hover:bg-white/90 border border-white/20 px-6 py-3 rounded-xl font-black uppercase tracking-wider transition-all shadow-lg shadow-black/10 active:scale-95"
+                  >
+                    Mulai Main
+                  </button>
+               </div>
+            )}
+
+            {typeTriviaStage === 'loading' && (
+               <div className="flex items-center gap-3 py-6">
+                 <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+                 <span className="font-bold animate-pulse">Menyiapkan Misi...</span>
+               </div>
+            )}
+
+            {typeTriviaStage === 'playing' && typeTriviaAnswer && (
+               <div className="flex flex-col md:flex-row gap-8 items-center bg-white/10 p-6 rounded-2xl backdrop-blur-sm border border-white/20">
+                  <div className="w-48 h-48 bg-white/20 rounded-xl flex flex-col items-center justify-center p-4 drop-shadow-xl relative overflow-hidden">
+                     <img 
+                       src={typeTriviaAnswer.image} 
+                       alt="Pokemon" 
+                       className="w-full h-full object-contain drop-shadow-md select-none" 
+                     />
+                  </div>
+                  <div className="flex-1 w-full">
+                     <h3 className="text-xl font-bold mb-4 text-center md:text-left">Apa tipe {typeTriviaAnswer.name}?</h3>
+                     <div className="grid grid-cols-2 gap-3">
+                        {typeTriviaOptions.map((opt: string) => (
+                          <button 
+                            key={opt}
+                            onClick={() => handleTypeAnswer(opt)}
+                            className="bg-white/10 hover:bg-white/20 border border-white/30 hover:border-white text-white flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold uppercase tracking-wider transition-all active:scale-95 text-sm"
+                          >
+                            <img src={`https://raw.githubusercontent.com/duiker101/pokemon-type-svg-icons/master/icons/${opt}.svg`} className="w-4 h-4 invert" alt={opt}/>
+                            {opt}
+                          </button>
+                        ))}
+                     </div>
+                  </div>
+               </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Type Trivia result */}
+      <AnimatePresence>
+         {typeTriviaStage === 'won' && (
+            <motion.div 
+               initial={{opacity: 0, height: 0}} 
+               animate={{opacity: 1, height: 'auto'}} 
+               className="bg-green-100 border border-green-200 p-6 rounded-2xl flex items-center gap-4 text-green-800 font-bold mt-4"
+            >
+               <CheckCircle2 className="w-8 h-8 text-green-500 shrink-0" />
+               <div>
+                  <p className="text-lg">Tebakan Tipe Benar!</p>
+                  <p className="text-sm font-medium opacity-80">Kamu mendapatkan 1 Token Gacha. Silahkan memancing.</p>
+               </div>
+            </motion.div>
+         )}
+         {typeTriviaStage === 'lost' && (
+            <motion.div 
+               initial={{opacity: 0, height: 0}} 
+               animate={{opacity: 1, height: 'auto'}} 
+               className="bg-red-100 border border-red-200 p-6 rounded-2xl flex items-center gap-4 text-red-800 font-bold mt-4"
+            >
+               <XCircle className="w-8 h-8 text-red-500 shrink-0" />
+               <div>
+                  <p className="text-lg">Tebakan Tipe Salah!</p>
+                  <p className="text-sm font-medium opacity-80">Sayang sekali, coba lagi besok ya.</p>
+               </div>
+            </motion.div>
+         )}
+      </AnimatePresence>
+
+      {/* Stat Trivia Mission */}
+      {canPlayStatTrivia && (
+        <div className="bg-gradient-to-br from-rose-500 to-red-600 rounded-3xl p-8 text-white relative overflow-hidden shadow-lg border border-rose-400/30 mt-6">
+          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10" />
+          
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-4">
+              <Gamepad2 className="w-8 h-8 text-rose-200" />
+              <h2 className="text-2xl font-black uppercase tracking-tight">Misi Harian: Tebak Stat Tertinggi</h2>
+            </div>
+            
+            {statTriviaStage === 'idle' && (
+               <div>
+                  <p className="mb-6 text-rose-100 font-medium">Tebak Base Stat apa yang paling tinggi dari Pokemon ini untuk mendapatkan 1 Token Gacha lagi!</p>
+                  <button 
+                    onClick={startStatTrivia}
+                    className="bg-white text-rose-900 hover:bg-white/90 border border-white/20 px-6 py-3 rounded-xl font-black uppercase tracking-wider transition-all shadow-lg shadow-black/10 active:scale-95"
+                  >
+                    Mulai Main
+                  </button>
+               </div>
+            )}
+
+            {statTriviaStage === 'loading' && (
+               <div className="flex items-center gap-3 py-6">
+                 <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+                 <span className="font-bold animate-pulse">Menyiapkan Misi...</span>
+               </div>
+            )}
+
+            {statTriviaStage === 'playing' && statTriviaAnswer && (
+               <div className="flex flex-col md:flex-row gap-8 items-center bg-white/10 p-6 rounded-2xl backdrop-blur-sm border border-white/20">
+                  <div className="w-48 h-48 bg-white/20 rounded-xl flex flex-col items-center justify-center p-4 drop-shadow-xl relative overflow-hidden">
+                     <img 
+                       src={statTriviaAnswer.image} 
+                       alt="Pokemon" 
+                       className="w-full h-full object-contain drop-shadow-md select-none" 
+                     />
+                  </div>
+                  <div className="flex-1 w-full">
+                     <h3 className="text-xl font-bold mb-4 text-center md:text-left">Apa Stat tertinggi dari {statTriviaAnswer.name}?</h3>
+                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {statTriviaOptions.map((opt: string) => (
+                          <button 
+                            key={opt}
+                            onClick={() => handleStatAnswer(opt)}
+                            className="bg-white/10 hover:bg-white/20 border border-white/30 hover:border-white text-white px-4 py-3 rounded-xl font-bold uppercase tracking-wider transition-all active:scale-95 text-xs"
+                          >
+                            {opt}
+                          </button>
+                        ))}
+                     </div>
+                  </div>
+               </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Stat Trivia result */}
+      <AnimatePresence>
+         {statTriviaStage === 'won' && (
+            <motion.div 
+               initial={{opacity: 0, height: 0}} 
+               animate={{opacity: 1, height: 'auto'}} 
+               className="bg-green-100 border border-green-200 p-6 rounded-2xl flex items-center gap-4 text-green-800 font-bold mt-4"
+            >
+               <CheckCircle2 className="w-8 h-8 text-green-500 shrink-0" />
+               <div>
+                  <p className="text-lg">Tebakan Stat Benar!</p>
+                  <p className="text-sm font-medium opacity-80">Kamu mendapatkan 1 Token Gacha. Silahkan memancing.</p>
+               </div>
+            </motion.div>
+         )}
+         {statTriviaStage === 'lost' && (
+            <motion.div 
+               initial={{opacity: 0, height: 0}} 
+               animate={{opacity: 1, height: 'auto'}} 
+               className="bg-red-100 border border-red-200 p-6 rounded-2xl flex items-center gap-4 text-red-800 font-bold mt-4"
+            >
+               <XCircle className="w-8 h-8 text-red-500 shrink-0" />
+               <div>
+                  <p className="text-lg">Tebakan Stat Salah!</p>
                   <p className="text-sm font-medium opacity-80">Sayang sekali, coba lagi besok ya.</p>
                </div>
             </motion.div>
@@ -764,6 +922,16 @@ export default function DailyGacha() {
             ))}
           </div>
         )}
+      </div>
+      
+      <div className="mt-8 pt-8 border-t border-white/10 flex justify-center">
+        <button 
+          onClick={resetMissionsForDemo}
+          className="text-white/30 hover:text-white/60 text-xs font-bold uppercase tracking-widest transition-colors flex items-center gap-2"
+        >
+          <RotateCcw className="w-3 h-3" />
+          Reset Misi (Untuk Demo)
+        </button>
       </div>
     </div>
   );

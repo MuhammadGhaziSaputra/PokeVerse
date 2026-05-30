@@ -176,7 +176,7 @@ export default function App() {
             >
               <div className="flex flex-col items-center justify-center mb-12 mt-8 text-center">
                 <h2 className="text-5xl md:text-7xl font-black mb-4 tracking-tighter uppercase !font-heading bg-gradient-to-br from-white to-slate-500 bg-clip-text text-transparent drop-shadow-sm">
-                  Poke<span className="text-transparent bg-clip-text bg-gradient-to-br from-red-400 to-red-600">Verse</span>
+                  Poke<span className="text-transparent bg-clip-text bg-gradient-to-br from-red-400 to-red-600">Nexus</span>
                 </h2>
                 <p className="text-slate-400 font-medium max-w-md text-sm md:text-base mb-8">Eksplorasi dengan pengalaman baru. Lebih cepat, lebih indah.</p>
                 
