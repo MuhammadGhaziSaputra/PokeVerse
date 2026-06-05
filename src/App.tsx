@@ -16,7 +16,7 @@ import PokeChat from "./components/PokeChat";
 import ProfileModal from "./components/ProfileModal";
 import DailyGacha from "./components/DailyGacha";
 import { motion, AnimatePresence } from "motion/react";
-import { LayoutGrid, ArrowLeftRight, Users, Sparkles, PieChart, X, LogIn, LogOut, Settings, Gift } from "lucide-react";
+import { LayoutGrid, ArrowLeftRight, Users, Sparkles, PieChart, X, LogIn, LogOut, Settings, Gift, Menu, ChevronLeft, ChevronRight } from "lucide-react";
 import { auth } from "./services/firebase";
 import { signInWithPopup, GoogleAuthProvider, signOut, User } from "firebase/auth";
 
@@ -42,6 +42,7 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [profileTick, setProfileTick] = useState(0);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [isNavOpen, setIsNavOpen] = useState(true);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((u) => setUser(u));
@@ -97,7 +98,16 @@ export default function App() {
       </div>
 
       {/* Sidebar / Bottom Navigation */}
-      <nav className="fixed bottom-4 md:bottom-auto md:top-1/2 md:-translate-y-1/2 left-1/2 -translate-x-1/2 md:left-4 md:-translate-x-0 w-[calc(100%-2rem)] md:w-auto bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl z-40 flex md:flex-col p-2 rounded-2xl md:min-h-[400px]">
+      <nav className={`fixed bottom-4 md:bottom-auto md:top-1/2 md:-translate-y-1/2 left-1/2 -translate-x-1/2 md:left-0 transition-transform duration-300 w-[calc(100%-2rem)] md:w-auto bg-[#131b2f] md:bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl z-40 flex md:flex-col p-2 rounded-2xl md:rounded-l-none md:min-h-[400px] ${isNavOpen ? 'md:translate-x-4' : 'md:-translate-x-full'}`}>
+        
+        {/* Nav Toggle Button (Desktop) */}
+        <button 
+          onClick={() => setIsNavOpen(!isNavOpen)}
+          className="hidden md:flex absolute top-1/2 -right-8 -translate-y-1/2 w-8 h-16 bg-[#131b2f] md:bg-white/5 backdrop-blur-xl border-y border-r border-white/10 rounded-r-xl items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors pointer-events-auto"
+        >
+          {isNavOpen ? <ChevronLeft className="w-5 h-5 drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] text-white" /> : <ChevronRight className="w-5 h-5 drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] text-white" />}
+        </button>
+
         <div className="hidden md:flex flex-col items-center gap-1 mb-8 mt-2">
            <div className="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center rotate-12 shadow-lg shadow-red-500/20 shrink-0 mb-2">
               <div className="w-4 h-4 bg-white rounded-full border-[3px] border-[#0B1021] relative">
@@ -152,7 +162,7 @@ export default function App() {
       </nav>
 
       {/* Main Content Wrapper */}
-      <div className="flex-1 md:ml-24 flex flex-col min-h-screen pb-24 md:pb-0 relative z-10 w-full overflow-hidden">
+      <div className={`flex-1 flex flex-col min-h-screen pb-24 md:pb-0 relative z-10 w-full overflow-hidden transition-all duration-300 ${isNavOpen ? 'md:ml-24' : 'md:ml-0'}`}>
         {loginError && (
           <div className="fixed top-4 left-1/2 -translate-x-1/2 max-w-sm w-full bg-red-900/50 backdrop-blur-md border border-red-500/50 text-red-200 p-4 rounded-2xl shadow-2xl z-50 flex justify-between items-start">
             <div>
