@@ -1,4 +1,4 @@
-import { Search, Layers, ArrowUpDown, ChevronDown } from "lucide-react";
+import { Search, Layers, ArrowUpDown, ChevronDown, Heart } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { typeHexColors } from "./PokemonCard";
@@ -9,6 +9,8 @@ interface Props {
   onFilterGen: (gen: string) => void;
   onSort: (sort: string) => void;
   currentSort: string;
+  isFavoritesOnly?: boolean;
+  onToggleFavorites?: () => void;
 }
 
 const ALL_TYPES = [
@@ -37,7 +39,7 @@ const GENERATIONS = [
   { label: "Gen 9", id: "9" }
 ];
 
-export default function SearchFilter({ onSearch, onFilterType, onFilterGen, onSort, currentSort }: Props) {
+export default function SearchFilter({ onSearch, onFilterType, onFilterGen, onSort, currentSort, isFavoritesOnly = false, onToggleFavorites }: Props) {
   const [activeTypes, setActiveTypes] = useState<string[]>([]);
   const [activeGen, setActiveGen] = useState<string>("");
   const [isSortOpen, setIsSortOpen] = useState(false);
@@ -116,7 +118,7 @@ export default function SearchFilter({ onSearch, onFilterType, onFilterGen, onSo
         </div>
         
         {/* Sort Dropdown */}
-        <div className="relative shrink-0" ref={sortRef}>
+        <div className="relative shrink-0 flex gap-4" ref={sortRef}>
            <button
              onClick={() => setIsSortOpen(!isSortOpen)}
              className="w-full md:w-auto h-full px-6 py-5 bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl focus:ring-2 focus:ring-white/50 transition-all outline-none text-white font-medium hover:bg-white/15 flex items-center justify-between gap-4"
@@ -154,8 +156,28 @@ export default function SearchFilter({ onSearch, onFilterType, onFilterGen, onSo
                </motion.div>
              )}
            </AnimatePresence>
+           
+           {onToggleFavorites && (
+             <button
+                onClick={onToggleFavorites}
+                className={`hidden md:flex items-center gap-3 h-full px-6 py-5 rounded-2xl font-bold text-sm transition-all whitespace-nowrap border ${isFavoritesOnly ? 'bg-red-500 text-white border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.3)]' : 'bg-white/10 backdrop-blur-xl text-slate-300 hover:text-white hover:bg-white/15 border-white/20 shadow-2xl'}`}
+              >
+                <Heart className={`w-5 h-5 ${isFavoritesOnly ? 'fill-current' : ''}`} />
+                {isFavoritesOnly ? 'Semua' : 'Favorit'}
+              </button>
+           )}
         </div>
       </div>
+      
+      {onToggleFavorites && (
+         <button
+            onClick={onToggleFavorites}
+            className={`md:hidden flex items-center justify-center gap-3 w-full px-6 py-4 rounded-2xl font-bold text-sm transition-all whitespace-nowrap border ${isFavoritesOnly ? 'bg-red-500 text-white border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.3)]' : 'bg-white/10 text-slate-300 hover:text-white hover:bg-white/15 border-white/20 shadow-2xl'}`}
+          >
+            <Heart className={`w-5 h-5 ${isFavoritesOnly ? 'fill-current' : ''}`} />
+            {isFavoritesOnly ? 'Semua Pokemon' : 'Hanya Favorit'}
+          </button>
+       )}
 
       {/* Interactive Filters */}
       <div className="flex flex-col gap-4">

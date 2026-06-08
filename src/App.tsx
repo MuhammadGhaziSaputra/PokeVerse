@@ -30,7 +30,7 @@ const PokeballIcon = ({ className = "w-8 h-8" }: { className?: string }) => (
   </svg>
 );
 
-type View = "grid" | "compare" | "team" | "chart" | "gacha" | "favorites";
+type View = "grid" | "compare" | "team" | "chart" | "gacha";
 
 export default function App() {
   const [selectedPokemon, setSelectedPokemon] = useState<IPokemonDetail | null>(null);
@@ -48,6 +48,7 @@ export default function App() {
   const [isNavOpen, setIsNavOpen] = useState(true);
   const [favorites, setFavorites] = useState<number[]>([]);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -139,7 +140,6 @@ export default function App() {
 
   const navItems = [
     { id: "grid", label: "Pokedex", icon: LayoutGrid },
-    { id: "favorites", label: "Favorit", icon: Heart },
     { id: "compare", label: "Bandingkan", icon: ArrowLeftRight },
     { id: "team", label: "Tim AI", icon: Sparkles },
     { id: "chart", label: "Analisis Tipe", icon: PieChart },
@@ -233,7 +233,7 @@ export default function App() {
         )}
         <main className="max-w-7xl mx-auto w-full px-4 md:px-8 py-12 flex-1">
         <AnimatePresence mode="wait">
-          {(view === "grid" || view === "favorites") && (
+          {view === "grid" && (
             <motion.div
               key={view}
               initial={{ opacity: 0, y: 20 }}
@@ -243,31 +243,37 @@ export default function App() {
             >
               <div className="flex flex-col items-center justify-center mb-12 mt-8 text-center">
                 <h2 className="text-5xl md:text-7xl font-black mb-4 tracking-tighter uppercase !font-heading bg-gradient-to-br from-white to-slate-500 bg-clip-text text-transparent drop-shadow-sm">
-                  {view === "favorites" ? (
+                  {showFavoritesOnly ? (
                       <>Pokemon <span className="text-transparent bg-clip-text bg-gradient-to-br from-red-400 to-red-600">Favorit</span></>
                   ) : (
                       <>Poke<span className="text-transparent bg-clip-text bg-gradient-to-br from-red-400 to-red-600">Nexus</span></>
                   )}
                 </h2>
                 <p className="text-slate-400 font-medium max-w-md text-sm md:text-base mb-8">
-                  {view === "favorites" ? "Pokemon yang paling kamu sukai." : "Eksplorasi dengan pengalaman baru. Lebih cepat, lebih indah."}
+                  {showFavoritesOnly ? "Pokemon yang paling kamu sukai." : "Eksplorasi dengan pengalaman baru. Lebih cepat, lebih indah."}
                 </p>
                 
-                {view === "grid" && (
-                  <div className="flex gap-4">
-                     <div className="px-6 py-3 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 flex flex-col items-center">
-                        <span className="text-2xl font-black text-white">1025</span>
-                        <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Spesies</span>
-                     </div>
-                     <div className="px-6 py-3 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 flex flex-col items-center">
-                        <span className="text-2xl font-black text-white">1-9</span>
-                        <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Generasi</span>
-                     </div>
-                  </div>
-                )}
+                <div className="flex gap-4">
+                   <div className="px-6 py-3 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 flex flex-col items-center">
+                      <span className="text-2xl font-black text-white">1025</span>
+                      <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Spesies</span>
+                   </div>
+                   <div className="px-6 py-3 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 flex flex-col items-center">
+                      <span className="text-2xl font-black text-white">1-9</span>
+                      <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Generasi</span>
+                   </div>
+                </div>
               </div>
 
-              <SearchFilter onSearch={setSearchQuery} onFilterType={setTypeFilter} onFilterGen={setGenFilter} onSort={setSortFilter} currentSort={sortFilter} />
+              <SearchFilter 
+                onSearch={setSearchQuery} 
+                onFilterType={setTypeFilter} 
+                onFilterGen={setGenFilter} 
+                onSort={setSortFilter} 
+                currentSort={sortFilter}
+                isFavoritesOnly={showFavoritesOnly}
+                onToggleFavorites={() => setShowFavoritesOnly(!showFavoritesOnly)}
+              />
               
               <PokemonGrid 
                 onSelect={handleSelectPokemon} 
@@ -275,7 +281,7 @@ export default function App() {
                 typeFilter={typeFilter}
                 genFilter={genFilter}
                 sortFilter={sortFilter}
-                favoritesOnly={view === "favorites"}
+                favoritesOnly={showFavoritesOnly}
                 favorites={favorites}
                 onToggleFavorite={handleToggleFavorite}
               />
