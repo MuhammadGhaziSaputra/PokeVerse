@@ -2,6 +2,8 @@ export interface PokemonBasic {
   id: number;
   name: string;
   image: string;
+  fallbackImage?: string;
+  spriteImage?: string;
   types: string[];
 }
 
@@ -14,11 +16,23 @@ export interface PokemonStats {
   speed: number;
 }
 
+export interface PokemonAbility {
+  name: string;
+  isHidden: boolean;
+}
+
+export interface PokemonMove {
+  name: string;
+  levelLearnedAt?: number;
+  method?: string;
+}
+
 export interface PokemonDetail extends PokemonBasic {
   stats: PokemonStats;
   height: number;
   weight: number;
-  abilities: string[];
+  abilities: PokemonAbility[];
+  moves?: PokemonMove[];
   description: string;
   cries?: string;
   shinyImage?: string;

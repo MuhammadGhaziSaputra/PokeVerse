@@ -16,9 +16,10 @@ import PokeChat from "./components/PokeChat";
 import ProfileModal from "./components/ProfileModal";
 import DailyGacha from "./components/DailyGacha";
 import { motion, AnimatePresence } from "motion/react";
-import { LayoutGrid, ArrowLeftRight, Users, Sparkles, PieChart, X, LogIn, LogOut, Settings, Gift, Menu, ChevronLeft, ChevronRight } from "lucide-react";
-import { auth } from "./services/firebase";
+import { LayoutGrid, ArrowLeftRight, Users, Sparkles, PieChart, X, LogIn, LogOut, Settings, Gift, Menu, ChevronLeft, ChevronRight, Heart } from "lucide-react";
+import { auth, db } from "./services/firebase";
 import { signInWithPopup, GoogleAuthProvider, signOut, User } from "firebase/auth";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 const PokeballIcon = ({ className = "w-8 h-8" }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -29,25 +30,68 @@ const PokeballIcon = ({ className = "w-8 h-8" }: { className?: string }) => (
   </svg>
 );
 
-type View = "grid" | "compare" | "team" | "chart" | "gacha";
+type View = "grid" | "compare" | "team" | "chart" | "gacha" | "favorites";
 
 export default function App() {
   const [selectedPokemon, setSelectedPokemon] = useState<IPokemonDetail | null>(null);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [view, setView] = useState<View>("grid");
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
   const [genFilter, setGenFilter] = useState("");
+  const [sortFilter, setSortFilter] = useState("id_asc");
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [profileTick, setProfileTick] = useState(0);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isNavOpen, setIsNavOpen] = useState(true);
+  const [favorites, setFavorites] = useState<number[]>([]);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((u) => setUser(u));
+    const unsubscribe = auth.onAuthStateChanged(async (u) => {
+      setUser(u);
+      if (u) {
+        try {
+          const docRef = doc(db, "users", u.uid, "userData", "favorites");
+          const snap = await getDoc(docRef);
+          if (snap.exists()) {
+            setFavorites(snap.data().list || []);
+          } else {
+            setFavorites([]);
+          }
+        } catch (e) {
+          console.error("Error loading favorites", e);
+        }
+      } else {
+        setFavorites([]);
+      }
+    });
     return () => unsubscribe();
   }, []);
+
+  const handleToggleFavorite = async (id: number) => {
+    if (!user) {
+      alert("Silakan login terlebih dahulu untuk menyimpan pokemon favorit.");
+      setIsProfileModalOpen(true);
+      return;
+    }
+
+    let newFavs: number[];
+    if (favorites.includes(id)) {
+      newFavs = favorites.filter(f => f !== id);
+    } else {
+      newFavs = [...favorites, id];
+    }
+    setFavorites(newFavs);
+
+    try {
+      const docRef = doc(db, "users", user.uid, "userData", "favorites");
+      await setDoc(docRef, { list: newFavs }, { merge: true });
+    } catch (e) {
+      console.error("Error saving favorite", e);
+    }
+  };
 
   const handleLogin = async () => {
     setLoginError(null);
@@ -74,15 +118,19 @@ export default function App() {
 
   const handleSelectPokemon = async (id: number) => {
     try {
+      setIsLoadingDetail(true);
       const detail = await fetchPokemonDetail(id);
       setSelectedPokemon(detail);
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsLoadingDetail(false);
     }
   };
 
   const navItems = [
     { id: "grid", label: "Pokedex", icon: LayoutGrid },
+    { id: "favorites", label: "Favorit", icon: Heart },
     { id: "compare", label: "Bandingkan", icon: ArrowLeftRight },
     { id: "team", label: "Tim AI", icon: Sparkles },
     { id: "chart", label: "Analisis Tipe", icon: PieChart },
@@ -176,9 +224,9 @@ export default function App() {
         )}
         <main className="max-w-7xl mx-auto w-full px-4 md:px-8 py-12 flex-1">
         <AnimatePresence mode="wait">
-          {view === "grid" && (
+          {(view === "grid" || view === "favorites") && (
             <motion.div
-              key="grid"
+              key={view}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
@@ -186,29 +234,41 @@ export default function App() {
             >
               <div className="flex flex-col items-center justify-center mb-12 mt-8 text-center">
                 <h2 className="text-5xl md:text-7xl font-black mb-4 tracking-tighter uppercase !font-heading bg-gradient-to-br from-white to-slate-500 bg-clip-text text-transparent drop-shadow-sm">
-                  Poke<span className="text-transparent bg-clip-text bg-gradient-to-br from-red-400 to-red-600">Nexus</span>
+                  {view === "favorites" ? (
+                      <>Pokemon <span className="text-transparent bg-clip-text bg-gradient-to-br from-red-400 to-red-600">Favorit</span></>
+                  ) : (
+                      <>Poke<span className="text-transparent bg-clip-text bg-gradient-to-br from-red-400 to-red-600">Nexus</span></>
+                  )}
                 </h2>
-                <p className="text-slate-400 font-medium max-w-md text-sm md:text-base mb-8">Eksplorasi dengan pengalaman baru. Lebih cepat, lebih indah.</p>
+                <p className="text-slate-400 font-medium max-w-md text-sm md:text-base mb-8">
+                  {view === "favorites" ? "Pokemon yang paling kamu sukai." : "Eksplorasi dengan pengalaman baru. Lebih cepat, lebih indah."}
+                </p>
                 
-                <div className="flex gap-4">
-                   <div className="px-6 py-3 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 flex flex-col items-center">
-                      <span className="text-2xl font-black text-white">1025</span>
-                      <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Spesies</span>
-                   </div>
-                   <div className="px-6 py-3 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 flex flex-col items-center">
-                      <span className="text-2xl font-black text-white">1-9</span>
-                      <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Generasi</span>
-                   </div>
-                </div>
+                {view === "grid" && (
+                  <div className="flex gap-4">
+                     <div className="px-6 py-3 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 flex flex-col items-center">
+                        <span className="text-2xl font-black text-white">1025</span>
+                        <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Spesies</span>
+                     </div>
+                     <div className="px-6 py-3 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 flex flex-col items-center">
+                        <span className="text-2xl font-black text-white">1-9</span>
+                        <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Generasi</span>
+                     </div>
+                  </div>
+                )}
               </div>
 
-              <SearchFilter onSearch={setSearchQuery} onFilterType={setTypeFilter} onFilterGen={setGenFilter} />
+              <SearchFilter onSearch={setSearchQuery} onFilterType={setTypeFilter} onFilterGen={setGenFilter} onSort={setSortFilter} currentSort={sortFilter} />
               
               <PokemonGrid 
                 onSelect={handleSelectPokemon} 
                 searchQuery={searchQuery}
                 typeFilter={typeFilter}
                 genFilter={genFilter}
+                sortFilter={sortFilter}
+                favoritesOnly={view === "favorites"}
+                favorites={favorites}
+                onToggleFavorite={handleToggleFavorite}
               />
             </motion.div>
           )}
@@ -274,7 +334,22 @@ export default function App() {
       <PokemonDetail 
         pokemon={selectedPokemon} 
         onClose={() => setSelectedPokemon(null)} 
+        onPokemonSelect={handleSelectPokemon}
       />
+
+      <AnimatePresence>
+        {isLoadingDetail && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 flex-col gap-4"
+          >
+             <div className="w-16 h-16 rounded-full border-4 border-white/20 border-t-red-500 animate-spin"></div>
+             <p className="text-white font-bold uppercase tracking-widest text-sm animate-pulse">Memuat Data Pokemon...</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Floating Chat Button */}
       <button

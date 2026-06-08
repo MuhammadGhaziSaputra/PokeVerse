@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { auth, db } from "../services/firebase";
 import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { fetchPokemonDetail } from "../services/pokeApi";
 import { PokemonDetail } from "../types";
-import { LogIn, Gift, Sparkles, Coins, Gamepad2, CheckCircle2, XCircle, RotateCcw, Volume2, BookOpen } from "lucide-react";
+import { LogIn, Gift, Sparkles, Coins, Gamepad2, CheckCircle2, XCircle, RotateCcw, Volume2, BookOpen, ChevronDown } from "lucide-react";
 import confetti from "canvas-confetti";
 
 const GENERATIONS = [
@@ -59,6 +59,19 @@ export default function DailyGacha() {
   const [caughtPokemonDetail, setCaughtPokemonDetail] = useState<PokemonDetail | null>(null);
   const [collectionList, setCollectionList] = useState<any[]>([]);
   const [selectedGenIndex, setSelectedGenIndex] = useState(0);
+  const [showOwnedOnly, setShowOwnedOnly] = useState(false);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
+        setIsFilterOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Trivia 1 States
   const [triviaStage, setTriviaStage] = useState<'idle'|'loading'|'playing'|'won'|'lost'>('idle');
@@ -1226,9 +1239,49 @@ export default function DailyGacha() {
       {/* Collection Gallery */}
       <div>
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-          <h3 className="text-2xl font-black text-white uppercase tracking-tight">
-            Koleksi Saya <span className="text-red-400 text-lg">({collectionList.length} / 1025)</span>
-          </h3>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <h3 className="text-2xl font-black text-white uppercase tracking-tight">
+              Koleksi Saya <span className="text-red-400 text-lg">({collectionList.length} / 1025)</span>
+            </h3>
+            <div className="relative shrink-0" ref={filterRef}>
+              <button
+                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                className="flex items-center justify-between gap-2 bg-white/10 border border-white/20 hover:bg-white/15 text-white text-xs font-bold rounded-lg px-4 py-2 focus:outline-none focus:border-red-500 uppercase tracking-widest cursor-pointer transition-all w-[180px]"
+              >
+                <span>{showOwnedOnly ? "Dimiliki Saja" : "Semua Pokemon"}</span>
+                <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isFilterOpen ? "rotate-180" : ""}`} />
+              </button>
+
+              <AnimatePresence>
+                {isFilterOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -5, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -5, scale: 0.95 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute top-full mt-2 w-full left-0 bg-slate-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 origin-top"
+                  >
+                    <button
+                      onClick={() => { setShowOwnedOnly(false); setIsFilterOpen(false); }}
+                      className={`w-full text-left px-4 py-3 text-xs font-bold uppercase tracking-widest transition-colors hover:bg-white/10 ${
+                        !showOwnedOnly ? "text-red-400" : "text-slate-300"
+                      }`}
+                    >
+                      Semua Pokemon
+                    </button>
+                    <button
+                      onClick={() => { setShowOwnedOnly(true); setIsFilterOpen(false); }}
+                      className={`w-full text-left px-4 py-3 text-xs font-bold uppercase tracking-widest transition-colors hover:bg-white/10 ${
+                        showOwnedOnly ? "text-red-400" : "text-slate-300"
+                      }`}
+                    >
+                      Dimiliki Saja
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
           
           <div className="flex flex-wrap gap-2">
             {GENERATIONS.map((gen, idx) => (
@@ -1253,6 +1306,8 @@ export default function DailyGacha() {
             (_, i) => i + GENERATIONS[selectedGenIndex].start
           ).map((id) => {
             const pokemon = collectionList.find(c => c.id === id);
+
+            if (showOwnedOnly && !pokemon) return null;
 
             if (pokemon) {
               // Encountered (Caught) Pokemon Card

@@ -350,7 +350,11 @@ export default function ComparisonTool() {
                   </div>
                 </div>
               </motion.div>
-            ) : null}
+            ) : (
+              <div className="mt-6 text-center text-slate-400 text-sm italic bg-white/5 p-6 rounded-2xl border border-white/10">
+                Limit API / Gagal memuat analisis dari AI. Silakan coba lagi nanti.
+              </div>
+            )}
           </div>
         </div>
       )}

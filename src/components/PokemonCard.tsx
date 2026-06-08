@@ -2,10 +2,14 @@ import React from "react";
 import { motion } from "motion/react";
 import { PokemonBasic } from "../types";
 
+import { Heart } from "lucide-react";
+
 interface Props {
   pokemon: PokemonBasic;
   onClick: (id: number) => void;
   isLarge?: boolean;
+  isFavorite?: boolean;
+  onToggleFavorite?: (id: number) => void;
 }
 
 const typeColors: Record<string, string> = {
@@ -50,7 +54,7 @@ export function getPokemonGeneration(id: number): string {
   return "Gen 9";
 }
 
-const PokemonCard: React.FC<Props> = ({ pokemon, onClick, isLarge = false }) => {
+const PokemonCard: React.FC<Props> = ({ pokemon, onClick, isLarge = false, isFavorite = false, onToggleFavorite }) => {
   const mainColor = typeHexColors[pokemon.types[0]] || "#ffffff";
   return (
     <motion.div
@@ -68,6 +72,16 @@ const PokemonCard: React.FC<Props> = ({ pokemon, onClick, isLarge = false }) => 
         <img
           src={pokemon.image || undefined}
           alt={pokemon.name}
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            if (pokemon.fallbackImage && target.src !== pokemon.fallbackImage && target.src !== pokemon.spriteImage) {
+              target.src = pokemon.fallbackImage;
+            } else if (pokemon.spriteImage && target.src !== pokemon.spriteImage) {
+              target.src = pokemon.spriteImage;
+            } else {
+              target.style.display = 'none';
+            }
+          }}
           className="w-full h-full object-contain filter drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)] group-hover:scale-110 transition-transform duration-500"
           referrerPolicy="no-referrer"
         />
@@ -77,6 +91,15 @@ const PokemonCard: React.FC<Props> = ({ pokemon, onClick, isLarge = false }) => 
         <span className="absolute top-2 right-2 text-xs font-mono font-bold w-12 text-center text-white/50 bg-black/30 backdrop-blur-md px-1 py-0.5 rounded shadow-sm border border-white/10">
           #{String(pokemon.id).padStart(3, '0')}
         </span>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onToggleFavorite) onToggleFavorite(pokemon.id);
+          }}
+          className={`absolute bottom-2 right-2 p-2 rounded-full backdrop-blur-md border shadow-sm transition-all hover:scale-110 ${isFavorite ? "bg-red-500/80 border-red-400 text-white" : "bg-black/30 border-white/10 text-white/50 hover:bg-black/50 hover:text-white"}`}
+        >
+          <Heart className={`w-4 h-4 ${isFavorite ? "fill-white" : ""}`} />
+        </button>
       </div>
       <h3 className={`font-black capitalize text-white mb-3 truncate !font-heading ${isLarge ? "text-2xl" : "text-xl"}`}>
         {pokemon.name}

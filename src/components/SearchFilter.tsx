@@ -1,17 +1,28 @@
-import { Search, Layers } from "lucide-react";
-import { useState, useRef } from "react";
+import { Search, Layers, ArrowUpDown, ChevronDown } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { typeHexColors } from "./PokemonCard";
 
 interface Props {
   onSearch: (query: string) => void;
   onFilterType: (types: string[]) => void;
   onFilterGen: (gen: string) => void;
+  onSort: (sort: string) => void;
+  currentSort: string;
 }
 
 const ALL_TYPES = [
   "normal", "fire", "water", "grass", "electric", "ice", "fighting",
   "poison", "ground", "flying", "psychic", "bug", "rock", "ghost",
   "dragon", "dark", "steel", "fairy"
+];
+
+const SORT_OPTIONS = [
+  { value: "id_asc", label: "Pokedex Number" },
+  { value: "bst_desc", label: "Base Stat (Tertinggi)" },
+  { value: "bst_asc", label: "Base Stat (Terendah)" },
+  { value: "name_asc", label: "Abjad (A-Z)" },
+  { value: "name_desc", label: "Abjad (Z-A)" }
 ];
 
 const GENERATIONS = [
@@ -26,9 +37,11 @@ const GENERATIONS = [
   { label: "Gen 9", id: "9" }
 ];
 
-export default function SearchFilter({ onSearch, onFilterType, onFilterGen }: Props) {
+export default function SearchFilter({ onSearch, onFilterType, onFilterGen, onSort, currentSort }: Props) {
   const [activeTypes, setActiveTypes] = useState<string[]>([]);
   const [activeGen, setActiveGen] = useState<string>("");
+  const [isSortOpen, setIsSortOpen] = useState(false);
+  const sortRef = useRef<HTMLDivElement>(null);
   
   const genScrollRef = useRef<HTMLDivElement>(null);
   const typeScrollRef = useRef<HTMLDivElement>(null);
@@ -36,6 +49,16 @@ export default function SearchFilter({ onSearch, onFilterType, onFilterGen }: Pr
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (sortRef.current && !sortRef.current.contains(event.target as Node)) {
+        setIsSortOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const startDrag = (e: React.MouseEvent, ref: React.RefObject<HTMLDivElement>) => {
     if (!ref.current) return;
@@ -80,15 +103,58 @@ export default function SearchFilter({ onSearch, onFilterType, onFilterGen }: Pr
 
   return (
     <div className="flex flex-col gap-6 mb-12">
-      {/* Search Bar - Floating Glassmorphism Style */}
-      <div className="relative group max-w-2xl mx-auto w-full">
-        <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-400 group-focus-within:text-white transition-colors" />
-        <input
-          type="text"
-          placeholder="Cari Pokemon..."
-          className="w-full pl-16 pr-6 py-5 bg-white/10 backdrop-blur-xl rounded-full border border-white/20 shadow-2xl focus:ring-2 focus:ring-white/50 transition-all outline-none text-white font-medium text-lg placeholder:text-slate-500"
-          onChange={(e) => onSearch(e.target.value)}
-        />
+      <div className="flex flex-col md:flex-row gap-4 max-w-4xl mx-auto w-full">
+        {/* Search Bar - Floating Glassmorphism Style */}
+        <div className="relative group flex-1">
+          <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-400 group-focus-within:text-white transition-colors" />
+          <input
+            type="text"
+            placeholder="Cari Pokemon..."
+            className="w-full pl-16 pr-6 py-5 bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl focus:ring-2 focus:ring-white/50 transition-all outline-none text-white font-medium text-lg placeholder:text-slate-500"
+            onChange={(e) => onSearch(e.target.value)}
+          />
+        </div>
+        
+        {/* Sort Dropdown */}
+        <div className="relative shrink-0" ref={sortRef}>
+           <button
+             onClick={() => setIsSortOpen(!isSortOpen)}
+             className="w-full md:w-auto h-full px-6 py-5 bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl focus:ring-2 focus:ring-white/50 transition-all outline-none text-white font-medium hover:bg-white/15 flex items-center justify-between gap-4"
+           >
+             <div className="flex items-center gap-3">
+               <ArrowUpDown className="w-5 h-5 text-slate-400" />
+               <span>{SORT_OPTIONS.find(o => o.value === currentSort)?.label || "Sortir"}</span>
+             </div>
+             <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${isSortOpen ? "rotate-180" : ""}`} />
+           </button>
+
+           <AnimatePresence>
+             {isSortOpen && (
+               <motion.div
+                 initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                 animate={{ opacity: 1, y: 0, scale: 1 }}
+                 exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                 transition={{ duration: 0.2 }}
+                 className="absolute top-full mt-2 w-full md:w-64 right-0 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 origin-top"
+               >
+                 {SORT_OPTIONS.map(opt => (
+                   <button
+                     key={opt.value}
+                     onClick={() => {
+                       onSort(opt.value);
+                       setIsSortOpen(false);
+                     }}
+                     className={`w-full text-left px-5 py-3 text-sm font-medium transition-colors hover:bg-white/10 ${
+                       currentSort === opt.value ? "text-red-400 tracking-wide" : "text-slate-300"
+                     }`}
+                   >
+                     {opt.label}
+                   </button>
+                 ))}
+               </motion.div>
+             )}
+           </AnimatePresence>
+        </div>
       </div>
 
       {/* Interactive Filters */}
