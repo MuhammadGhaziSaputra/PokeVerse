@@ -241,6 +241,39 @@ export default function PokemonDetail({ pokemon, onClose, onPokemonSelect }: Pro
                       </div>
                     </div>
                   )}
+
+                  {pokemon.forms && pokemon.forms.length > 0 && (
+                    <div className="overflow-hidden mt-6">
+                      <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <Sparkles className="w-4 h-4" /> Form Alternatif
+                      </h3>
+                      <div className="flex items-center gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                        {pokemon.forms.map((form) => (
+                          <div key={form.id} className="flex items-center gap-4 shrink-0">
+                            <div 
+                              className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all cursor-pointer ${pokemon.id === form.id ? 'border-red-500 bg-red-500/10 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'border-white/10 bg-white/5 hover:border-white/30 hover:bg-white/10'}`}
+                              onClick={() => {
+                                if (pokemon.id !== form.id && onPokemonSelect) {
+                                  onPokemonSelect(form.id);
+                                }
+                              }}
+                            >
+                              <img 
+                                src={form.image || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${form.id}.png`}
+                                alt={form.name}
+                                className="w-16 h-16 object-contain drop-shadow-lg"
+                                onError={(e) => {
+                                  // Fallback to front_default or basic sprite if artwork isn't found
+                                  (e.target as HTMLImageElement).src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${form.id}.png`;
+                                }}
+                              />
+                              <span className="text-[10px] font-bold tracking-widest text-white uppercase mt-2 max-w-[80px] text-center truncate" title={form.name.replace(/-/g, ' ')}>{form.name.replace(/-/g, ' ')}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </motion.div>
               )}
 

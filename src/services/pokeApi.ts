@@ -204,6 +204,27 @@ export const fetchPokemonDetail = async (idOrName: string | number): Promise<Pok
     console.error("Failed to fetch evolution chain", e);
   }
 
+  let forms: { id: number; name: string; image: string; types: string[] }[] = [];
+  try {
+    if (speciesData.varieties && speciesData.varieties.length > 1) {
+      const formPromises = speciesData.varieties
+        .filter((v: any) => !v.is_default)
+        .map(async (v: any) => {
+          const formRes = await fetch(v.pokemon.url);
+          const formData = await formRes.json();
+          return {
+            id: formData.id,
+            name: formData.name,
+            image: formData.sprites?.other?.["official-artwork"]?.front_default || formData.sprites?.front_default || "",
+            types: formData.types.map((t: any) => t.type.name),
+          };
+        });
+      forms = await Promise.all(formPromises);
+    }
+  } catch(e) {
+    console.error("Failed to fetch alternate forms", e);
+  }
+
   return {
     id: data.id,
     name: data.name,
@@ -218,7 +239,8 @@ export const fetchPokemonDetail = async (idOrName: string | number): Promise<Pok
     description,
     cries,
     shinyImage,
-    evolutionChain
+    evolutionChain,
+    forms
   };
 };
 

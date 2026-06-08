@@ -16,7 +16,7 @@ import PokeChat from "./components/PokeChat";
 import ProfileModal from "./components/ProfileModal";
 import DailyGacha from "./components/DailyGacha";
 import { motion, AnimatePresence } from "motion/react";
-import { LayoutGrid, ArrowLeftRight, Users, Sparkles, PieChart, X, LogIn, LogOut, Settings, Gift, Menu, ChevronLeft, ChevronRight, Heart } from "lucide-react";
+import { LayoutGrid, ArrowLeftRight, Users, Sparkles, PieChart, X, LogIn, LogOut, Settings, Gift, Menu, ChevronLeft, ChevronRight, Heart, ArrowUp } from "lucide-react";
 import { auth, db } from "./services/firebase";
 import { signInWithPopup, GoogleAuthProvider, signOut, User } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -47,6 +47,15 @@ export default function App() {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isNavOpen, setIsNavOpen] = useState(true);
   const [favorites, setFavorites] = useState<number[]>([]);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 400);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (u) => {
@@ -347,6 +356,26 @@ export default function App() {
           >
              <div className="w-16 h-16 rounded-full border-4 border-white/20 border-t-red-500 animate-spin"></div>
              <p className="text-white font-bold uppercase tracking-widest text-sm animate-pulse">Memuat Data Pokemon...</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Scroll to Top Button */}
+      <AnimatePresence>
+        {showScrollTop && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-20 md:bottom-6 right-[5rem] md:right-28 z-[60]"
+          >
+            <button
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="p-3 md:p-4 text-white bg-slate-800/80 hover:bg-slate-700 backdrop-blur-md rounded-full shadow-xl hover:scale-105 transition-all duration-300 border border-white/10 flex items-center justify-center group"
+              title="Kembali ke atas"
+            >
+              <ArrowUp className="w-5 h-5 md:w-6 md:h-6 group-hover:-translate-y-1 transition-transform" />
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

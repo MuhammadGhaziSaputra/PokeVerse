@@ -37,6 +37,7 @@ export interface PokemonDetail extends PokemonBasic {
   cries?: string;
   shinyImage?: string;
   evolutionChain?: { id: number; name: string }[];
+  forms?: { id: number; name: string; image: string; types: string[] }[];
 }
 
 export interface TeamRecommendation {
