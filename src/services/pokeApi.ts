@@ -186,18 +186,28 @@ export const fetchPokemonDetail = async (idOrName: string | number): Promise<Pok
   const cries = data.cries?.latest || null;
   const shinyImage = data.sprites?.other?.["official-artwork"]?.front_shiny || data.sprites?.front_shiny || null;
 
-  let evolutionChain: {id: number, name: string}[] = [];
+  let evolutionChain: {id: number, name: string}[][] = [];
   try {
     if (speciesData.evolution_chain?.url) {
       const evoResponse = await fetch(speciesData.evolution_chain.url);
       const evoData = await evoResponse.json();
       
-      let currentEvo = evoData.chain;
-      while (currentEvo) {
-        const urlSegments = currentEvo.species.url.split('/');
+      const traverse = (node: any, currentPath: {id: number, name: string}[]) => {
+        const urlSegments = node.species.url.split('/');
         const id = parseInt(urlSegments[urlSegments.length - 2]);
-        evolutionChain.push({ id, name: currentEvo.species.name });
-        currentEvo = currentEvo.evolves_to[0]; // follow primary path
+        const nextPath = [...currentPath, { id, name: node.species.name }];
+        
+        if (node.evolves_to.length === 0) {
+          evolutionChain.push(nextPath);
+        } else {
+          node.evolves_to.forEach((child: any) => traverse(child, nextPath));
+        }
+      };
+      
+      if (evoData.chain) {
+        traverse(evoData.chain, []);
+        // Only keep paths that include this Pokemon
+        evolutionChain = evolutionChain.filter(path => path.some(p => p.id === data.id));
       }
     }
   } catch(e) {

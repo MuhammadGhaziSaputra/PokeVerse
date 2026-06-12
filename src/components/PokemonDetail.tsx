@@ -149,7 +149,7 @@ export default function PokemonDetail({ pokemon, onClose, onPokemonSelect }: Pro
             </div>
           </div>
 
-          <div className="flex-1 flex flex-col text-white">
+          <div className="flex-1 flex flex-col text-white min-w-0">
             <div className="flex border-b border-white/10 p-4 gap-2 overflow-x-auto scrollbar-hide shrink-0">
               <button 
                 onClick={() => setActiveTab('info')}
@@ -208,46 +208,53 @@ export default function PokemonDetail({ pokemon, onClose, onPokemonSelect }: Pro
                     </p>
                   </div>
 
-                  {pokemon.evolutionChain && pokemon.evolutionChain.length > 1 && (
-                    <div className="overflow-hidden">
+                  {pokemon.evolutionChain && pokemon.evolutionChain.length > 0 && pokemon.evolutionChain[0].length > 1 && (
+                    <div className="w-full">
                       <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <Zap className="w-4 h-4" /> Rantai Evolusi
                       </h3>
-                      <div className="flex items-center gap-4 overflow-x-auto pb-4 scrollbar-hide">
-                        {pokemon.evolutionChain.map((evo, i) => (
-                          <div key={evo.id} className="flex items-center gap-4 shrink-0">
-                            <div 
-                              className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all cursor-pointer ${pokemon.id === evo.id ? 'border-red-500 bg-red-500/10 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'border-white/10 bg-white/5 hover:border-white/30 hover:bg-white/10'}`}
-                              onClick={() => {
-                                if (pokemon.id !== evo.id && onPokemonSelect) {
-                                  onPokemonSelect(evo.id);
-                                }
-                              }}
-                            >
-                              <img 
-                                src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${evo.id}.png`}
-                                alt={evo.name}
-                                className="w-16 h-16 object-contain drop-shadow-lg"
-                              />
-                              <span className="text-[10px] font-bold tracking-widest text-white uppercase mt-2">{evo.name}</span>
-                            </div>
-                            {i < pokemon.evolutionChain!.length - 1 && (
-                              <div className="text-slate-500">
-                                <ArrowRight className="w-5 h-5 opacity-50" />
-                              </div>
-                            )}
-                          </div>
+                      <div className="flex flex-col gap-6 overflow-x-auto pb-4 scrollbar-thin">
+                        {pokemon.evolutionChain.map((path, pathIndex) => (
+                           <div key={pathIndex} className="flex items-center gap-4 w-max">
+                              {path.map((evo, i) => (
+                                <div key={`${pathIndex}-${evo.id}`} className="flex items-center gap-4 shrink-0">
+                                  <div 
+                                    className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all cursor-pointer ${pokemon.id === evo.id ? 'border-red-500 bg-red-500/10 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'border-white/10 bg-white/5 hover:border-white/30 hover:bg-white/10'}`}
+                                    onClick={() => {
+                                      if (pokemon.id !== evo.id && onPokemonSelect) {
+                                        onPokemonSelect(evo.id);
+                                      }
+                                    }}
+                                  >
+                                    <img 
+                                      src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${evo.id}.png`}
+                                      alt={evo.name}
+                                      className="w-16 h-16 object-contain drop-shadow-lg"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${evo.id}.png`;
+                                      }}
+                                    />
+                                    <span className="text-[10px] font-bold tracking-widest text-white uppercase mt-2">{evo.name.replace(/-/g, ' ')}</span>
+                                  </div>
+                                  {i < path.length - 1 && (
+                                    <div className="text-slate-500">
+                                      <ArrowRight className="w-5 h-5 opacity-50" />
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                           </div>
                         ))}
                       </div>
                     </div>
                   )}
 
                   {pokemon.forms && pokemon.forms.length > 0 && (
-                    <div className="overflow-hidden mt-6">
+                    <div className="w-full mt-6">
                       <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <Sparkles className="w-4 h-4" /> Form Alternatif
                       </h3>
-                      <div className="flex items-center gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                      <div className="flex items-center gap-4 overflow-x-auto pb-4 scrollbar-thin">
                         {pokemon.forms.map((form) => (
                           <div key={form.id} className="flex items-center gap-4 shrink-0">
                             <div 
